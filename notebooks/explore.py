@@ -93,12 +93,11 @@ template_context = TemplateContext.empty(
 
 # Load ESM embeddings
 if use_esm_embeddings:
-    embedding_context = get_esm_embedding_context(chains, device=torch.cpu)
+    embedding_context = get_esm_embedding_context(chains, device=device)
 else:
     embedding_context = EmbeddingContext.empty(n_tokens=n_actual_tokens)
 
 # %%
-
 # Constraints
 constraint_context = ConstraintContext.empty()
 
@@ -112,6 +111,151 @@ feature_context = AllAtomFeatureContext(
     embedding_context=embedding_context,
     constraint_context=constraint_context,
 )
+
+# %%
+# Set seed
+if seed is not None:
+    set_seed([seed])
+
+if device is None:
+    device = torch.device("cuda:0")
+
+##
+## Validate inputs
+##
+
+n_actual_tokens = feature_context.structure_context.num_tokens
+raise_if_too_many_tokens(n_actual_tokens)
+raise_if_too_many_templates(feature_context.template_context.num_templates)
+raise_if_msa_too_deep(feature_context.msa_context.depth)
+raise_if_msa_too_deep(feature_context.main_msa_context.depth)
+
+# %%
+
+collator = Collate(
+    feature_factory=feature_factory,
+    num_key_atoms=128,
+    num_query_atoms=32,
+)
+
+# %%
+
+
+
+feature_contexts = [feature_context]
+batch_size = len(feature_contexts)
+batch = collator(feature_contexts)
+batch = move_data_to_device(batch, device=device)
+
+# Get features and inputs from batch
+features = {name: feature for name, feature in batch["features"].items()}
+inputs = batch["inputs"]
+block_indices_h = inputs["block_atom_pair_q_idces"]
+block_indices_w = inputs["block_atom_pair_kv_idces"]
+atom_single_mask = inputs["atom_exists_mask"]
+atom_token_indices = inputs["atom_token_index"].long()
+token_single_mask = inputs["token_exists_mask"]
+token_pair_mask = und_self(token_single_mask, "b i, b j -> b i j")
+token_reference_atom_index = inputs["token_ref_atom_index"]
+atom_within_token_index = inputs["atom_within_token_index"]
+msa_mask = inputs["msa_mask"]
+template_input_masks = und_self(
+    inputs["template_mask"], "b t n1, b t n2 -> b t n1 n2"
+)
+block_atom_pair_mask = inputs["block_atom_pair_mask"]
+
+# %%
+
+
+##
+## Load exported models
+##
+
+# Model is size-specific
+model_size = min(x for x in AVAILABLE_MODEL_SIZES if n_actual_tokens <= x)
+
+feature_embedding = load_exported(f"{model_size}/feature_embedding.pt2", device)
+token_input_embedder = load_exported(
+    f"{model_size}/token_input_embedder.pt2", device
+)
+trunk = load_exported(f"{model_size}/trunk.pt2", device)
+# diffusion_module = load_exported(f"{model_size}/diffusion_module.pt2", device)
+# confidence_head = load_exported(f"{model_size}/confidence_head.pt2", device)
+
+# %%
+
+##
+## Run the features through the feature embedder
+##
+
+embedded_features = feature_embedding.forward(**features)
+token_single_input_feats = embedded_features["TOKEN"]
+token_pair_input_feats, token_pair_structure_input_feats = embedded_features[
+    "TOKEN_PAIR"
+].chunk(2, dim=-1)
+atom_single_input_feats, atom_single_structure_input_feats = embedded_features[
+    "ATOM"
+].chunk(2, dim=-1)
+block_atom_pair_input_feats, block_atom_pair_structure_input_feats = (
+    embedded_features["ATOM_PAIR"].chunk(2, dim=-1)
+)
+template_input_feats = embedded_features["TEMPLATES"]
+msa_input_feats = embedded_features["MSA"]
+
+# %%
+
+##
+## Run the inputs through the token input embedder
+##
+
+token_input_embedder_outputs: tuple[Tensor, ...] = token_input_embedder.forward(
+    token_single_input_feats=token_single_input_feats,
+    token_pair_input_feats=token_pair_input_feats,
+    atom_single_input_feats=atom_single_input_feats,
+    block_atom_pair_feat=block_atom_pair_input_feats,
+    block_atom_pair_mask=block_atom_pair_mask,
+    block_indices_h=block_indices_h,
+    block_indices_w=block_indices_w,
+    atom_single_mask=atom_single_mask,
+    atom_token_indices=atom_token_indices,
+)
+token_single_initial_repr, token_single_structure_input, token_pair_initial_repr = (
+    token_input_embedder_outputs
+)
+
+# %%
+
+
+##
+## Run the input representations through the trunk
+##
+
+from time import time
+
+start = time()
+
+# Recycle the representations by feeding the output back into the trunk as input for
+# the subsequent recycle
+token_single_trunk_repr = token_single_initial_repr
+token_pair_trunk_repr = token_pair_initial_repr
+for _ in tqdm(range(num_trunk_recycles), desc="Trunk recycles"):
+    (token_single_trunk_repr, token_pair_trunk_repr) = trunk.forward(
+        token_single_trunk_initial_repr=token_single_initial_repr,
+        token_pair_trunk_initial_repr=token_pair_initial_repr,
+        token_single_trunk_repr=token_single_trunk_repr,  # recycled
+        token_pair_trunk_repr=token_pair_trunk_repr,  # recycled
+        msa_input_feats=msa_input_feats,
+        msa_mask=msa_mask,
+        template_input_feats=template_input_feats,
+        template_input_masks=template_input_masks,
+        token_single_mask=token_single_mask,
+        token_pair_mask=token_pair_mask,
+    )
+
+print("Elapsed:", time() - start)
+
+
+
 
 # %%
 
@@ -165,4 +309,6 @@ GAAL
 >ligand|and-example-for-ligand-encoded-as-smiles
 CCCCCCCCCCCCCC(=O)O
 """.strip()
+
+
 
