@@ -1,5 +1,5 @@
 #!/bin/bash
-cd ~/transcoder-sae-circuits
+cd ~/chai_dojo
 
 # Prevent auto tmux
 touch ~/.no_auto_tmux
@@ -29,3 +29,5 @@ echo "conda activate chai-env" >> ~/.bashrc
 
 # Activate the Conda environment
 source ~/miniconda3/bin/activate chai-env
+
+pip install -r requirements.in
