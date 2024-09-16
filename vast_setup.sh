@@ -31,3 +31,4 @@ echo "conda activate chai-env" >> ~/.bashrc
 source ~/miniconda3/bin/activate chai-env
 
 pip install -r requirements.in
+pip install -e .
