@@ -15,6 +15,60 @@ model_size = AVAILABLE_MODEL_SIZES[0]
 device = torch.device("cuda:0")
 
 # %%
+def model_size_in_bytes(model):
+    total_bytes = 0
+    for param in model.parameters():
+        total_bytes += (
+            param.nelement() * param.element_size()
+        )  # num_elements * size_per_element
+    for buffer in model.buffers():
+        total_bytes += (
+            buffer.nelement() * buffer.element_size()
+        )  # num_elements * size_per_element
+    return total_bytes
+
+
+def print_model_memory_usage(model):
+    size_bytes = model_size_in_bytes(model)
+    size_mb = size_bytes / (1024**2)  # Convert from bytes to megabytes
+    print(f"The model uses approximately {size_mb:.2f} MB")
+
+
+def get_gpu_memory():
+    if torch.cuda.is_available():
+        # Get the number of GPUs available
+        num_gpus = torch.cuda.device_count()
+        print(f"Number of GPUs Available: {num_gpus}")
+
+        # Print memory information for each GPU
+        for i in range(num_gpus):
+            torch.cuda.synchronize(i)
+            total_memory = torch.cuda.get_device_properties(i).total_memory
+            free_memory = torch.cuda.mem_get_info(i)[0]
+            used_memory = total_memory - free_memory
+
+            print(f"GPU {i}:")
+            print(f"  Total Memory: {total_memory / 1e9:.2f} GB")
+            print(f"  Used Memory: {used_memory / 1e9:.2f} GB")
+            print(f"  Free Memory: {free_memory / 1e9:.2f} GB")
+    else:
+        print("No CUDA-capable device is detected")
+
+
+
+# %%
+!nvidia-smi
+
+# %%
+get_gpu_memory()
+
+
+# %%
+
+# >protein|example-of-long-protein
+# AGSHSMRYFSTSVSRPGRGEPRFIAVGYVDDTQFVRFDSDAASPRGEPRAPWVEQEGPEYWDRETQKYKRQAQTDRVSLRNLRGYYNQSEAGSHTLQWMFGCDLGPDGRLLRGYDQSAYDGKDYIALNEDLRSWTAADTAAQITQRKWEAAREAEQRRAYLEGTCVEWLRRYLENGKETLQRAEHPKTHVTHHPVSDHEATLRCWALGFYPAEITLTWQWDGEDQTQDTELVETRPAGDGTFQKWAAVVVPSGEEQRYTCHVQHEGLPEPLTLRWEP
+
+# %%
 example_fasta = """
 >protein|example-of-long-protein
 AGSHSMRYFSTSVSRPGRGEPRFIAVGYVDDTQFVRFDSDAASPRGEPRAPWVEQEGPEYWDRETQKYKRQAQTDRVSLRNLRGYYNQSEAGSHTLQWMFGCDLGPDGRLLRGYDQSAYDGKDYIALNEDLRSWTAADTAAQITQRKWEAAREAEQRRAYLEGTCVEWLRRYLENGKETLQRAEHPKTHVTHHPVSDHEATLRCWALGFYPAEITLTWQWDGEDQTQDTELVETRPAGDGTFQKWAAVVVPSGEEQRYTCHVQHEGLPEPLTLRWEP
@@ -52,8 +106,8 @@ fasta_inputs
 
 
 # %%
-conformer_generator = RefConformerGenerator()
-tokenizer = AllAtomResidueTokenizer(conformer_generator)
+# conformer_generator = RefConformerGenerator()
+# tokenizer = AllAtomResidueTokenizer(conformer_generator)
 
 # %%
 # Load structure context
@@ -66,8 +120,6 @@ raise_if_too_many_tokens(n_actual_tokens)
 # %%
 chains[0].structure_context
 
-
-# %%
 
 
 # Load MSAs
@@ -226,6 +278,16 @@ token_single_initial_repr, token_single_structure_input, token_pair_initial_repr
 # %%
 
 
+token_single_initial_repr.shape, token_pair_initial_repr.shape, msa_input_feats.shape
+
+
+
+# %%
+torch.set_grad_enabled(False)
+
+# %%
+
+
 ##
 ## Run the input representations through the trunk
 ##
@@ -256,59 +318,64 @@ print("Elapsed:", time() - start)
 
 
 
+# %%
+token_single_trunk_repr.shape, token_pair_trunk_repr.shape
+
+
+
+# # %%
+# !nvidia-smi
+
+
+
+
+# # %%
+# feature_embedding = load_exported(f"{model_size}/feature_embedding.pt2", device)
+# token_input_embedder = load_exported(
+#     f"{model_size}/token_input_embedder.pt2", device)
+# trunk = load_exported(f"{model_size}/trunk.pt2", device)
+# diffusion_module = load_exported(f"{model_size}/diffusion_module.pt2", device)
+# confidence_head = load_exported(f"{model_size}/confidence_head.pt2", device)
+
+# # %%
+# total_params = 0
+
+# models = [
+#     # feature_embedding, token_input_embedder, trunk
+#     # diffusion_module
+#     confidence_head
+# ]
+
+# for model in models:
+#     # total_params += sum(p.numel() for p in model.parameters() if p.requires_grad)
+#     total_params += sum(p.numel() for p in model.parameters())
+
+# print(f"Total Params: {total_params:,}")
+
+
+# # %%
+# trunk
+
+# # %%
+# dir(trunk.pairformer_stack.blocks)
+
+# # %%
+# list(list(trunk.pairformer_stack.blocks.children())[0].transition_pair.linear_out.parameters())[0].shape
+
+
+# # %%
+# example_fasta = """
+# >protein|example-of-long-protein
+# AGSHSMRYFSTSVSRPGRGEPRFIAVGYVDDTQFVRFDSDAASPRGEPRAPWVEQEGPEYWDRETQKYKRQAQTDRVSLRNLRGYYNQSEAGSHTLQWMFGCDLGPDGRLLRGYDQSAYDGKDYIALNEDLRSWTAADTAAQITQRKWEAAREAEQRRAYLEGTCVEWLRRYLENGKETLQRAEHPKTHVTHHPVSDHEATLRCWALGFYPAEITLTWQWDGEDQTQDTELVETRPAGDGTFQKWAAVVVPSGEEQRYTCHVQHEGLPEPLTLRWEP
+# >protein|example-of-short-protein
+# AIQRTPKIQVYSRHPAENGKSNFLNCYVSGFHPSDIEVDLLKNGERIEKVEHSDLSFSKDWSFYLLYYTEFTPTEKDEYACRVNHVTLSQPKIVKWDRDM
+# >protein|example-of-peptide
+# GAAL
+# >ligand|and-example-for-ligand-encoded-as-smiles
+# CCCCCCCCCCCCCC(=O)O
+# """.strip()
+
+
+
 
 # %%
-
-
-
-
-
-
-# %%
-feature_embedding = load_exported(f"{model_size}/feature_embedding.pt2", device)
-token_input_embedder = load_exported(
-    f"{model_size}/token_input_embedder.pt2", device)
-trunk = load_exported(f"{model_size}/trunk.pt2", device)
-diffusion_module = load_exported(f"{model_size}/diffusion_module.pt2", device)
-confidence_head = load_exported(f"{model_size}/confidence_head.pt2", device)
-
-# %%
-total_params = 0
-
-models = [
-    # feature_embedding, token_input_embedder, trunk
-    # diffusion_module
-    confidence_head
-]
-
-for model in models:
-    # total_params += sum(p.numel() for p in model.parameters() if p.requires_grad)
-    total_params += sum(p.numel() for p in model.parameters())
-
-print(f"Total Params: {total_params:,}")
-
-
-# %%
-trunk
-
-# %%
-dir(trunk.pairformer_stack.blocks)
-
-# %%
-list(list(trunk.pairformer_stack.blocks.children())[0].transition_pair.linear_out.parameters())[0].shape
-
-
-# %%
-example_fasta = """
->protein|example-of-long-protein
-AGSHSMRYFSTSVSRPGRGEPRFIAVGYVDDTQFVRFDSDAASPRGEPRAPWVEQEGPEYWDRETQKYKRQAQTDRVSLRNLRGYYNQSEAGSHTLQWMFGCDLGPDGRLLRGYDQSAYDGKDYIALNEDLRSWTAADTAAQITQRKWEAAREAEQRRAYLEGTCVEWLRRYLENGKETLQRAEHPKTHVTHHPVSDHEATLRCWALGFYPAEITLTWQWDGEDQTQDTELVETRPAGDGTFQKWAAVVVPSGEEQRYTCHVQHEGLPEPLTLRWEP
->protein|example-of-short-protein
-AIQRTPKIQVYSRHPAENGKSNFLNCYVSGFHPSDIEVDLLKNGERIEKVEHSDLSFSKDWSFYLLYYTEFTPTEKDEYACRVNHVTLSQPKIVKWDRDM
->protein|example-of-peptide
-GAAL
->ligand|and-example-for-ligand-encoded-as-smiles
-CCCCCCCCCCCCCC(=O)O
-""".strip()
-
-
-
