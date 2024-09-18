@@ -7,52 +7,18 @@ import torch
 
 from chai_lab.chai1 import *
 
+from chai_lab.data.collate.utils import get_pad_sizes
 from chai_lab.data.dataset.structure.all_atom_residue_tokenizer import AllAtomResidueTokenizer
 from chai_lab.data.sources.rdkit import RefConformerGenerator
+from chai_lab.utils.memory import get_gpu_memory
+
+
 
 # %%
 model_size = AVAILABLE_MODEL_SIZES[0]
 device = torch.device("cuda:0")
 
-# %%
-def model_size_in_bytes(model):
-    total_bytes = 0
-    for param in model.parameters():
-        total_bytes += (
-            param.nelement() * param.element_size()
-        )  # num_elements * size_per_element
-    for buffer in model.buffers():
-        total_bytes += (
-            buffer.nelement() * buffer.element_size()
-        )  # num_elements * size_per_element
-    return total_bytes
 
-
-def print_model_memory_usage(model):
-    size_bytes = model_size_in_bytes(model)
-    size_mb = size_bytes / (1024**2)  # Convert from bytes to megabytes
-    print(f"The model uses approximately {size_mb:.2f} MB")
-
-
-def get_gpu_memory():
-    if torch.cuda.is_available():
-        # Get the number of GPUs available
-        num_gpus = torch.cuda.device_count()
-        print(f"Number of GPUs Available: {num_gpus}")
-
-        # Print memory information for each GPU
-        for i in range(num_gpus):
-            torch.cuda.synchronize(i)
-            total_memory = torch.cuda.get_device_properties(i).total_memory
-            free_memory = torch.cuda.mem_get_info(i)[0]
-            used_memory = total_memory - free_memory
-
-            print(f"GPU {i}:")
-            print(f"  Total Memory: {total_memory / 1e9:.2f} GB")
-            print(f"  Used Memory: {used_memory / 1e9:.2f} GB")
-            print(f"  Free Memory: {free_memory / 1e9:.2f} GB")
-    else:
-        print("No CUDA-capable device is detected")
 
 
 
@@ -65,8 +31,10 @@ get_gpu_memory()
 
 # %%
 
+# rando_protein =  """
 # >protein|example-of-long-protein
 # AGSHSMRYFSTSVSRPGRGEPRFIAVGYVDDTQFVRFDSDAASPRGEPRAPWVEQEGPEYWDRETQKYKRQAQTDRVSLRNLRGYYNQSEAGSHTLQWMFGCDLGPDGRLLRGYDQSAYDGKDYIALNEDLRSWTAADTAAQITQRKWEAAREAEQRRAYLEGTCVEWLRRYLENGKETLQRAEHPKTHVTHHPVSDHEATLRCWALGFYPAEITLTWQWDGEDQTQDTELVETRPAGDGTFQKWAAVVVPSGEEQRYTCHVQHEGLPEPLTLRWEP
+# """
 
 # %%
 example_fasta = """
@@ -79,6 +47,7 @@ GAAL
 >ligand|and-example-for-ligand-encoded-as-smiles
 CCCCCCCCCCCCCC(=O)O
 """.strip()
+
 
 # %%
 fasta_path = Path("/tmp/example.fasta")
@@ -106,8 +75,8 @@ fasta_inputs
 
 
 # %%
-# conformer_generator = RefConformerGenerator()
-# tokenizer = AllAtomResidueTokenizer(conformer_generator)
+conformer_generator = RefConformerGenerator()
+tokenizer = AllAtomResidueTokenizer(conformer_generator)
 
 # %%
 # Load structure context
@@ -133,8 +102,6 @@ main_msa_context = MSAContext.create_empty(
 )
 
 # %%
-
-
 # Load templates
 template_context = TemplateContext.empty(
     n_tokens=n_actual_tokens,
@@ -190,6 +157,7 @@ collator = Collate(
     num_query_atoms=32,
 )
 
+
 # %%
 
 
@@ -198,6 +166,20 @@ feature_contexts = [feature_context]
 batch_size = len(feature_contexts)
 batch = collator(feature_contexts)
 batch = move_data_to_device(batch, device=device)
+
+
+# %%
+pad_sizes = get_pad_sizes([p.structure_context for p in feature_contexts])
+# %%
+
+# How we get the number of tokens for a given run
+feature_contexts[0].structure_context.num_atoms
+
+# %%
+
+
+
+
 
 # Get features and inputs from batch
 features = {name: feature for name, feature in batch["features"].items()}
@@ -217,11 +199,17 @@ template_input_masks = und_self(
 block_atom_pair_mask = inputs["block_atom_pair_mask"]
 
 # %%
+list(batch['inputs'].keys()) #['token_exists_mask'] == True).sum()
+
+batch['inputs']['token_index']
 
 
+# %%
 ##
 ## Load exported models
 ##
+
+
 
 # Model is size-specific
 model_size = min(x for x in AVAILABLE_MODEL_SIZES if n_actual_tokens <= x)
@@ -233,6 +221,15 @@ token_input_embedder = load_exported(
 trunk = load_exported(f"{model_size}/trunk.pt2", device)
 # diffusion_module = load_exported(f"{model_size}/diffusion_module.pt2", device)
 # confidence_head = load_exported(f"{model_size}/confidence_head.pt2", device)
+
+# %%
+model_size
+
+# %%
+list(features.keys())
+list(features.values())[0].shape
+
+
 
 # %%
 
@@ -319,7 +316,16 @@ print("Elapsed:", time() - start)
 
 
 # %%
-token_single_trunk_repr.shape, token_pair_trunk_repr.shape
+token_single_trunk_repr[0, 400:420, :3]
+
+# %%
+s, e = 400, 420
+
+token_pair_trunk_repr[0, s:e, s:e, :3].shape
+
+
+
+
 
 
 
