@@ -44,7 +44,7 @@ class FastaChain:
 
 
 @dataclass
-class FastaEntry:
+class FastaPDB:
     pdb_id: str
     chains: List[FastaChain]
 
@@ -77,7 +77,7 @@ def download_pdb():
     os.remove(SAVE_PATH)
 
 
-def get_pdb_fastas(only_protein=False, max_combined_len=None) -> List[FastaEntry]:
+def get_pdb_fastas(only_protein=False, max_combined_len=None) -> List[FastaPDB]:
     # Check if the file already exists at save path
     if not os.path.exists(UNZIP_PATH):
         download_pdb()
@@ -103,7 +103,7 @@ def get_pdb_fastas(only_protein=False, max_combined_len=None) -> List[FastaEntry
     return entries
 
 
-def parse_pdb_list(lines: List[str]) -> List[FastaEntry]:
+def parse_pdb_list(lines: List[str]) -> List[FastaPDB]:
     entries = []
     component_list_builder = []
     last_pdb_id = None
@@ -138,7 +138,7 @@ def parse_pdb_list(lines: List[str]) -> List[FastaEntry]:
         else:
             if last_pdb_id is not None:
                 entries.append(
-                    FastaEntry(pdb_id=last_pdb_id, chains=component_list_builder)
+                    FastaPDB(pdb_id=last_pdb_id, chains=component_list_builder)
                 )
 
             last_pdb_id = pdb_id
@@ -147,6 +147,6 @@ def parse_pdb_list(lines: List[str]) -> List[FastaEntry]:
         i += 2
 
     if last_pdb_id is not None:
-        entries.append(FastaEntry(pdb_id=last_pdb_id, chains=component_list_builder))
+        entries.append(FastaPDB(pdb_id=last_pdb_id, chains=component_list_builder))
 
     return entries

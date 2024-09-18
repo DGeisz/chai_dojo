@@ -155,24 +155,15 @@ def load_chains_from_raw(
     loads and tokenizes each input chain
     """
 
-    print("Start")
-    curr = time()
-
     if tokenizer is None:
         conformer_generator = RefConformerGenerator()
         tokenizer = AllAtomResidueTokenizer(conformer_generator)
-
-    print("A", time() - curr)
-    curr = time()
 
     # Extract the entity data from the gemmi structure.
     entities: list[AllAtomEntityData] = raw_inputs_to_entitites_data(
         inputs,
         identifier=identifier,
     )
-
-    print("B", time() - curr)
-    curr = time()
 
     # Tokenize the entity data
     structure_contexts = []
@@ -188,10 +179,6 @@ def load_chains_from_raw(
         except Exception:
             logger.exception(f"Failed to tokenize input {inputs[idx]}")
 
-    # %%
-    print("C", time() - curr)
-    curr = time()
-
     # Join the untokenized entity data with the tokenized chain data, removing
     # chains we failed to tokenize
     chains = [
@@ -199,10 +186,6 @@ def load_chains_from_raw(
         for entity_data, structure_context in zip(entities, structure_contexts)
         if structure_context is not None
     ]
-
-    # %%
-    print("D", time() - curr)
-    curr = time()
 
     return chains
 
