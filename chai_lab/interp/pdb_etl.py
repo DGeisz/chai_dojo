@@ -14,7 +14,7 @@ UNZIP_PATH = SAVE_PATH.replace(".gz", "")
 
 
 @dataclass
-class FastaComponent:
+class FastaChain:
     fasta_type: str
     sequence: str
     extra_header: str
@@ -32,9 +32,7 @@ class FastaComponent:
             elif subtype == "RNA":
                 return "rna"
 
-            raise ValueError(
-                f"Unknown fasta type: {self.fasta_type} with extra header: {self.extra_header}"
-            )
+            return "unknown"
 
     @property
     def chai_fasta_header(self):
@@ -48,15 +46,15 @@ class FastaComponent:
 @dataclass
 class FastaEntry:
     pdb_id: str
-    components: List[FastaComponent]
+    chains: List[FastaChain]
 
     @property
     def combined_length(self):
-        return sum([comp.length for comp in self.components])
+        return sum([comp.length for comp in self.chains])
 
     @property
     def chai_fasta(self):
-        return "\n".join([comp.chai_fasta for comp in self.components])
+        return "\n".join([comp.chai_fasta for comp in self.chains])
 
 
 def download_pdb():
@@ -94,7 +92,7 @@ def get_pdb_fastas(only_protein=False, max_combined_len=None) -> List[FastaEntry
         entries = [
             entry
             for entry in entries
-            if all([comp.fasta_type == "protein" for comp in entry.components])
+            if all([comp.fasta_type == "protein" for comp in entry.chains])
         ]
 
     if max_combined_len is not None:
@@ -128,7 +126,7 @@ def parse_pdb_list(lines: List[str]) -> List[FastaEntry]:
 
         seq = lines[i + 1]
 
-        comp = FastaComponent(
+        comp = FastaChain(
             fasta_type=fasta_type,
             sequence=seq,
             length=length,
@@ -140,7 +138,7 @@ def parse_pdb_list(lines: List[str]) -> List[FastaEntry]:
         else:
             if last_pdb_id is not None:
                 entries.append(
-                    FastaEntry(pdb_id=last_pdb_id, components=component_list_builder)
+                    FastaEntry(pdb_id=last_pdb_id, chains=component_list_builder)
                 )
 
             last_pdb_id = pdb_id
@@ -149,8 +147,6 @@ def parse_pdb_list(lines: List[str]) -> List[FastaEntry]:
         i += 2
 
     if last_pdb_id is not None:
-        entries.append(
-            FastaEntry(pdb_id=last_pdb_id, components=component_list_builder)
-        )
+        entries.append(FastaEntry(pdb_id=last_pdb_id, chains=component_list_builder))
 
     return entries
