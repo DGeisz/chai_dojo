@@ -22,6 +22,9 @@ from chai_lab.data.dataset.structure.all_atom_structure_context import (
 from chai_lab.data.dataset.templates.context import TemplateContext
 from chai_lab.interp.pdb_etl import FastaPDB
 
+# How we get the number of tokens for a given run
+# feature_contexts[0].structure_context.num_tokens
+
 
 def fasta_to_feature_context(
     base_fasta: FastaPDB,
