@@ -20,16 +20,22 @@ from chai_lab.data.dataset.structure.all_atom_structure_context import (
     AllAtomStructureContext,
 )
 from chai_lab.data.dataset.templates.context import TemplateContext
+from chai_lab.data.sources.rdkit import RefConformerGenerator
 from chai_lab.interp.pdb_etl import FastaPDB
 
 # How we get the number of tokens for a given run
 # feature_contexts[0].structure_context.num_tokens
 
 
+def gen_tokenizer() -> AllAtomResidueTokenizer:
+    conformer_generator = RefConformerGenerator()
+    return AllAtomResidueTokenizer(conformer_generator)
+
+
 def fasta_to_feature_context(
     base_fasta: FastaPDB,
     tokenizer: AllAtomResidueTokenizer,
-    device: str,
+    device,
 ) -> AllAtomFeatureContext:
     # Gen a random string 3 chars long
     fasta_path = Path(
