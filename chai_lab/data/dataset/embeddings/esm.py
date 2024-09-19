@@ -36,6 +36,9 @@ def esm_model(model_name: str, device):
     model.to("cpu")  # move model back to CPU when done
 
 
+esm_tokenizer = None
+
+
 def _get_esm_contexts_for_sequences(
     prot_sequences: set[str], device
 ) -> dict[str, EmbeddingContext]:
@@ -46,7 +49,13 @@ def _get_esm_contexts_for_sequences(
     from transformers import EsmTokenizer
 
     model_name = "facebook/esm2_t36_3B_UR50D"
-    tokenizer = EsmTokenizer.from_pretrained(model_name)
+
+    global esm_tokenizer
+
+    if esm_tokenizer is None:
+        esm_tokenizer = EsmTokenizer.from_pretrained(model_name)
+
+    tokenizer = esm_tokenizer
 
     seq2embedding_context = {}
 

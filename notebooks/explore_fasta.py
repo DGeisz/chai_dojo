@@ -1,10 +1,10 @@
 # %%
+
 %load_ext autoreload
 %autoreload 2
 
 # %%
 import torch
-
 from chai_lab.chai1 import *
 
 from chai_lab.data.collate.utils import get_pad_sizes
@@ -12,35 +12,102 @@ from chai_lab.data.dataset.structure.all_atom_residue_tokenizer import AllAtomRe
 from chai_lab.data.sources.rdkit import RefConformerGenerator
 from chai_lab.interp.context_builder import fasta_to_feature_context, gen_tokenizer
 from chai_lab.interp.pdb_etl import get_pdb_fastas
-from chai_lab.utils.memory import get_gpu_memory
+
+from chai_lab.utils.memory import get_gpu_memory, model_size_in_bytes
+from dataclasses import dataclass, fields, is_dataclass
+from copy import deepcopy
+
+import time
+
+class Timer:
+    def __init__(self, name=None):
+        self.name = name
+
+
+    def __enter__(self):
+        self.start_time = time.time()  # Record the start time
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end_time = time.time()  # Record the end time
+        self.elapsed_time = self.end_time - self.start_time
+        print(f"Elapsed time: {self.elapsed_time:.4f} seconds ({self.name if self.name else ''})")
 
 
 
 # %%
+
 model_size = AVAILABLE_MODEL_SIZES[0]
 device = torch.device("cuda:0")
 
 
 
 # %%
-get_gpu_memory()
 
+get_gpu_memory()
 
 ##
 ## Validate inputs
 ##
 
 # %%
-fastas = get_pdb_fastas(only_protein=True, max_combined_len=255)
-tokenizer = gen_tokenizer()
+def clone_and_move_to_cuda(obj):
+    if is_dataclass(obj):
+        # If the object is a dataclass, create a new instance by cloning and moving fields
+        new_obj = deepcopy(obj)  # First create a deep copy of the dataclass
+        for field in fields(obj):
+            field_value = getattr(obj, field.name)
+            # Recursively apply the function to each field value
+            setattr(new_obj, field.name, clone_and_move_to_cuda(field_value))
+        return new_obj
+    elif isinstance(obj, list):
+        # If the object is a list, recursively apply this function to its elements
+        return [clone_and_move_to_cuda(v) for v in obj]
+    elif isinstance(obj, tuple):
+        # If the object is a tuple, recursively apply this function to its elements and return a new tuple
+        return tuple(clone_and_move_to_cuda(v) for v in obj)
+    elif isinstance(obj, torch.Tensor):
+        # If the object is a tensor, clone it and move it to CUDA
+        return obj.clone().cuda()
+    else:
+        # If it's not a dataclass, list, tuple, or tensor, return it as is
+        return obj
+
 
 # %%
-batch_size = 4
+with Timer("Load fastas"):
+    fastas = get_pdb_fastas(only_protein=True, max_combined_len=50)
 
 
-feature_contexts = [fasta_to_feature_context(f, tokenizer=tokenizer, device=device) for f in fastas[:batch_size]]
+with Timer("Load tokenizer"):
+    tokenizer = gen_tokenizer()
+
 # %%
+len(fastas)
+    
 
+# %%
+with Timer("Feature Context Builder"):
+    batch_size = 10
+
+    feature_contexts = [fasta_to_feature_context(f, tokenizer=tokenizer, device=device) for f in fastas[:batch_size]]
+
+# %%
+ff = feature_contexts[0]
+
+# %%
+dgg = clone_and_move_to_cuda(ff)
+
+# %%
+model_size_in_bytes( feature_contexts[0].embedding_context.esm_embeddings)
+
+# %%
+feature_contexts[0].structure_context.num_tokens
+
+
+
+
+# %%
 collator = Collate(
     feature_factory=feature_factory,
     num_key_atoms=128,
@@ -49,18 +116,48 @@ collator = Collate(
 
 
 # %%
+%%time
 
 batch_size = len(feature_contexts)
 batch = collator(feature_contexts)
-batch = move_data_to_device(batch, device=device)
+
+# %%
+%lprun -f Collate._collate cc = collator._collate(feature_contexts)
+
+# %%
+ccc = move_data_to_device(cc, device=device)
 
 
 # %%
-pad_sizes = get_pad_sizes([p.structure_context for p in feature_contexts])
+%lprun -f Collate._post_collate batch = collator._post_collate(ccc)
+
+# %%
+
+
+
+
+
+
+# %%
+batch["inputs"]['token_exists_mask'].device
+
+# %%
+batch
+
+
+
+# %%
+with Timer("Move to device"):
+    batch = move_data_to_device(batch, device=device)
+
+
+# %%
+with Timer("Load exported models"):
+    pad_sizes = get_pad_sizes([p.structure_context for p in feature_contexts])
 # %%
 
 # How we get the number of tokens for a given run
-feature_contexts[0].structure_context.num_atoms
+feature_contexts[0].structure_context.num_tokens
 
 # %%
 
@@ -99,22 +196,25 @@ batch['inputs']['token_index']
 
 
 # Model is size-specific
-model_size = min(x for x in AVAILABLE_MODEL_SIZES if n_actual_tokens <= x)
+# model_size = min(x for x in AVAILABLE_MODEL_SIZES if n_actual_tokens <= x)
+with Timer("Load external models"):
+    model_size = 256
 
-feature_embedding = load_exported(f"{model_size}/feature_embedding.pt2", device)
-token_input_embedder = load_exported(
-    f"{model_size}/token_input_embedder.pt2", device
-)
-trunk = load_exported(f"{model_size}/trunk.pt2", device)
+    feature_embedding = load_exported(f"{model_size}/feature_embedding.pt2", device)
+    token_input_embedder = load_exported(
+        f"{model_size}/token_input_embedder.pt2", device
+    )
+    trunk = load_exported(f"{model_size}/trunk.pt2", device)
 # diffusion_module = load_exported(f"{model_size}/diffusion_module.pt2", device)
 # confidence_head = load_exported(f"{model_size}/confidence_head.pt2", device)
 
 # %%
-model_size
-
-# %%
 list(features.keys())
 list(features.values())[0].shape
+
+# %%
+get_gpu_memory()
+
 
 
 
@@ -124,40 +224,41 @@ list(features.values())[0].shape
 ## Run the features through the feature embedder
 ##
 
-embedded_features = feature_embedding.forward(**features)
-token_single_input_feats = embedded_features["TOKEN"]
-token_pair_input_feats, token_pair_structure_input_feats = embedded_features[
-    "TOKEN_PAIR"
-].chunk(2, dim=-1)
-atom_single_input_feats, atom_single_structure_input_feats = embedded_features[
-    "ATOM"
-].chunk(2, dim=-1)
-block_atom_pair_input_feats, block_atom_pair_structure_input_feats = (
-    embedded_features["ATOM_PAIR"].chunk(2, dim=-1)
-)
-template_input_feats = embedded_features["TEMPLATES"]
-msa_input_feats = embedded_features["MSA"]
+with Timer("Embed Shit"):
+    embedded_features = feature_embedding.forward(**features)
+    token_single_input_feats = embedded_features["TOKEN"]
+    token_pair_input_feats, token_pair_structure_input_feats = embedded_features[
+        "TOKEN_PAIR"
+    ].chunk(2, dim=-1)
+    atom_single_input_feats, atom_single_structure_input_feats = embedded_features[
+        "ATOM"
+    ].chunk(2, dim=-1)
+    block_atom_pair_input_feats, block_atom_pair_structure_input_feats = (
+        embedded_features["ATOM_PAIR"].chunk(2, dim=-1)
+    )
+    template_input_feats = embedded_features["TEMPLATES"]
+    msa_input_feats = embedded_features["MSA"]
 
 # %%
 
 ##
 ## Run the inputs through the token input embedder
 ##
-
-token_input_embedder_outputs: tuple[Tensor, ...] = token_input_embedder.forward(
-    token_single_input_feats=token_single_input_feats,
-    token_pair_input_feats=token_pair_input_feats,
-    atom_single_input_feats=atom_single_input_feats,
-    block_atom_pair_feat=block_atom_pair_input_feats,
-    block_atom_pair_mask=block_atom_pair_mask,
-    block_indices_h=block_indices_h,
-    block_indices_w=block_indices_w,
-    atom_single_mask=atom_single_mask,
-    atom_token_indices=atom_token_indices,
-)
-token_single_initial_repr, token_single_structure_input, token_pair_initial_repr = (
-    token_input_embedder_outputs
-)
+with Timer("Embed shit twoo"):
+    token_input_embedder_outputs: tuple[Tensor, ...] = token_input_embedder.forward(
+        token_single_input_feats=token_single_input_feats,
+        token_pair_input_feats=token_pair_input_feats,
+        atom_single_input_feats=atom_single_input_feats,
+        block_atom_pair_feat=block_atom_pair_input_feats,
+        block_atom_pair_mask=block_atom_pair_mask,
+        block_indices_h=block_indices_h,
+        block_indices_w=block_indices_w,
+        atom_single_mask=atom_single_mask,
+        atom_token_indices=atom_token_indices,
+    )
+    token_single_initial_repr, token_single_structure_input, token_pair_initial_repr = (
+        token_input_embedder_outputs
+    )
 
 # %%
 
@@ -176,29 +277,28 @@ torch.set_grad_enabled(False)
 ## Run the input representations through the trunk
 ##
 
-from time import time
-
-start = time()
+num_trunk_recycles = 3
 
 # Recycle the representations by feeding the output back into the trunk as input for
 # the subsequent recycle
 token_single_trunk_repr = token_single_initial_repr
 token_pair_trunk_repr = token_pair_initial_repr
-for _ in tqdm(range(num_trunk_recycles), desc="Trunk recycles"):
-    (token_single_trunk_repr, token_pair_trunk_repr) = trunk.forward(
-        token_single_trunk_initial_repr=token_single_initial_repr,
-        token_pair_trunk_initial_repr=token_pair_initial_repr,
-        token_single_trunk_repr=token_single_trunk_repr,  # recycled
-        token_pair_trunk_repr=token_pair_trunk_repr,  # recycled
-        msa_input_feats=msa_input_feats,
-        msa_mask=msa_mask,
-        template_input_feats=template_input_feats,
-        template_input_masks=template_input_masks,
-        token_single_mask=token_single_mask,
-        token_pair_mask=token_pair_mask,
-    )
 
-print("Elapsed:", time() - start)
+with Timer("RUN THE BITCH"):
+    for _ in tqdm(range(num_trunk_recycles), desc="Trunk recycles"):
+        (token_single_trunk_repr, token_pair_trunk_repr) = trunk.forward(
+            token_single_trunk_initial_repr=token_single_initial_repr,
+            token_pair_trunk_initial_repr=token_pair_initial_repr,
+            token_single_trunk_repr=token_single_trunk_repr,  # recycled
+            token_pair_trunk_repr=token_pair_trunk_repr,  # recycled
+            msa_input_feats=msa_input_feats,
+            msa_mask=msa_mask,
+            template_input_feats=template_input_feats,
+            template_input_masks=template_input_masks,
+            token_single_mask=token_single_mask,
+            token_pair_mask=token_pair_mask,
+        )
+
 
 
 

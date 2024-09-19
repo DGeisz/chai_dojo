@@ -1,5 +1,7 @@
 import dataclasses
 import logging
+import time
+
 from typing import Any
 
 import torch
@@ -16,6 +18,22 @@ from chai_lab.utils.dict import list_dict_to_dict_list
 logger = logging.getLogger(__name__)
 
 
+class Timer:
+    def __init__(self, name=None):
+        self.name = name
+
+    def __enter__(self):
+        self.start_time = time.time()  # Record the start time
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end_time = time.time()  # Record the end time
+        self.elapsed_time = self.end_time - self.start_time
+        print(
+            f"Elapsed time: {self.elapsed_time:.4f} seconds ({self.name if self.name else ''})"
+        )
+
+
 @dataclasses.dataclass(frozen=True)
 class Collate:
     feature_factory: FeatureFactory
@@ -28,6 +46,7 @@ class Collate:
     ) -> dict[str, Any]:
         raw_batch = self._collate(feature_contexts)
         prepared_batch = self._post_collate(raw_batch)
+
         return prepared_batch
 
     def _collate(
