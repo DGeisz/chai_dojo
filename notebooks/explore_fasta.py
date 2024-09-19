@@ -43,7 +43,6 @@ device = torch.device("cuda:0")
 
 
 # %%
-
 get_gpu_memory()
 
 ##
@@ -76,7 +75,7 @@ def clone_and_move_to_cuda(obj):
 
 # %%
 with Timer("Load fastas"):
-    fastas = get_pdb_fastas(only_protein=True, max_combined_len=50)
+    fastas = get_pdb_fastas(only_protein=True, max_combined_len=255)
 
 
 with Timer("Load tokenizer"):
@@ -88,7 +87,7 @@ len(fastas)
 
 # %%
 with Timer("Feature Context Builder"):
-    batch_size = 10
+    batch_size = 1
 
     feature_contexts = [fasta_to_feature_context(f, tokenizer=tokenizer, device=device) for f in fastas[:batch_size]]
 
@@ -298,6 +297,62 @@ with Timer("RUN THE BITCH"):
             token_single_mask=token_single_mask,
             token_pair_mask=token_pair_mask,
         )
+
+# %%
+n_t = feature_contexts[0].structure_context.num_tokens
+
+persist_single=token_single_trunk_repr[0, :n_t]
+persist_pairs = token_pair_initial_repr[0, :n_t, :n_t]
+
+# %%
+
+
+persist_pairs.shape
+
+# %%
+
+
+
+
+token_single_trunk_repr.shape
+
+n_t = feature_contexts[0].structure_context.num_tokens
+
+# %%
+token_single_trunk_repr[0, n_t-4:n_t+4, :4]
+
+# %%
+
+import os
+
+os.environ['AWS_ACCESS_KEY_ID'] = '<your-access-key-id>'
+os.environ['AWS_SECRET_ACCESS_KEY'] = '<your-secret-access-key>'
+os.environ['AWS_DEFAULT_REGION'] = 'us-west-2'
+
+# %%
+import os
+
+os.environ['AWS_ACCESS_KEY_ID']
+
+# %%
+import yaml
+
+
+# Load `creds.yaml` file
+
+with open("creds.yaml", "r") as file:
+    creds = yaml.safe_load(file)
+
+
+# %%
+%pip install boto3
+
+
+
+
+
+# %%
+creds
 
 
 
