@@ -1,15 +1,13 @@
 import torch
+import os
 
-from chai_lab.interp.pdb_etl import get_pdb_fastas
 from einops import rearrange
-
-bucket_name = "mech-interp"
-pair_prefix = "chai/acts"
-
-single_seq_prefix = "chai/single_seq_acts"
-
-fastas = get_pdb_fastas(only_protein=True, max_combined_len=255)
-FASTA_PDB_IDS = [fasta.pdb_id for fasta in fastas]
+from chai_lab.interp.quick_utils import (
+    FASTA_PDB_IDS,
+    pair_s3_key,
+    pair_file_name,
+    bucket_name,
+)
 
 
 class PairActivationShuffleLoader:
@@ -18,13 +16,11 @@ class PairActivationShuffleLoader:
         batch_size,
         s3,
         bucket_name=bucket_name,
-        prefix=pair_prefix,
         f_index=0,
         buffer_size_in_proteins=4,
     ):
         self.s3 = s3
         self.bucket_name = bucket_name
-        self.prefix = prefix
 
         self.batch_size = batch_size
 
@@ -34,7 +30,7 @@ class PairActivationShuffleLoader:
         self.buffer_size_in_proteins = buffer_size_in_proteins
 
         self._init_f_index(f_index)
-        self._init_buffer()
+        self.buffer_init = False
 
     def _init_f_index(self, f_index):
         self._f_index = f_index - 1
@@ -53,12 +49,16 @@ class PairActivationShuffleLoader:
         self.buffer = buffer[torch.randperm(buffer.size(0))]
 
     def _load_pdb_flat_acts(self, pdb_id):
-        key = f"{self.prefix}/{pdb_id}.pt"
-        obj = self.s3.get_object(Bucket=self.bucket_name, Key=key)
+        key = pair_s3_key(pdb_id)
+        file_name = pair_file_name(pdb_id)
 
-        acts = torch.load(obj["pair_acts"])
+        print(f"Loading {file_name}")
+
+        self.s3.download_file(self.bucket_name, key, file_name)
+        acts = torch.load(file_name)['pair_acts']
+        os.remove(file_name)
+
         acts = rearrange(acts, "h w c -> (h w) c")
-
         return acts
 
     def _refill_buffer(self):
@@ -70,6 +70,10 @@ class PairActivationShuffleLoader:
         self.buffer = self.buffer[torch.randperm(self.buffer.size(0))]
 
     def next_batch(self):
+        if not self.buffer_init:
+            self._init_buffer()
+            self.buffer_init = True
+
         self.buffer_index += self.batch_size
 
         acts = self.buffer[self.buffer_index : self.buffer_index + self.batch_size]

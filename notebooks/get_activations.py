@@ -19,6 +19,7 @@ from chai_lab.utils.memory import get_gpu_memory, model_size_in_bytes
 from dataclasses import dataclass, fields, is_dataclass
 from copy import deepcopy
 
+print("Started Updated Script!")
 
 # %%
 torch.set_grad_enabled(False)
