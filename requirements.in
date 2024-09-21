@@ -48,3 +48,4 @@ torch~=2.3.1
 transformers~=4.44  # for esm inference
 
 boto3
+accelerate

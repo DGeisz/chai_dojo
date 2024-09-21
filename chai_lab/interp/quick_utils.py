@@ -21,3 +21,5 @@ def single_seq_filename(pdb_id: str):
 
 SHORT_PROTEIN_FASTAS = get_pdb_fastas(only_protein=True, max_combined_len=255)
 FASTA_PDB_IDS = [fasta.pdb_id for fasta in SHORT_PROTEIN_FASTAS]
+
+AVAILABLE_PDB_IDS = FASTA_PDB_IDS[:7900]

@@ -110,4 +110,5 @@ else:
         print("Triton disabled, using eager implementation of SAE decoder.")
         decoder_impl = eager_decode
     else:
+        print("Using Triton implementation of SAE!")
         decoder_impl = triton_decode
