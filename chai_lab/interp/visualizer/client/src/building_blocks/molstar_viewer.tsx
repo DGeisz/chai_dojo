@@ -15,6 +15,8 @@ interface MolstarViewerProps {
   onMount?: (plugin: PluginContext) => void;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const MolstarViewer: React.FC<MolstarViewerProps> = (props) => {
   const { pdbId, residueIds, onMount } = props;
 
@@ -36,6 +38,8 @@ export const MolstarViewer: React.FC<MolstarViewerProps> = (props) => {
 
       const plugin = new PluginContext(DefaultPluginSpec());
       await plugin.init();
+
+      await sleep(10);
 
       if (!plugin.initViewer(canvas, viewport)) {
         viewport.innerHTML = "Failed to init Mol*";
