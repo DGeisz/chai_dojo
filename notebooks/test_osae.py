@@ -5,10 +5,18 @@
 # %%
 import matplotlib.pyplot as plt
 import numpy as np
+import wandb
+
+from dataclasses import asdict
 
 from chai_lab.interp.config import OSAEConfig
 from chai_lab.interp.train import OSAETrainer
 from chai_lab.interp.s3 import s3_client
+
+
+# %%
+wandb.login()
+
 
 # %%
 cfg = OSAEConfig(
@@ -20,18 +28,32 @@ cfg = OSAEConfig(
     d_model=256,
     num_batches_for_dead_neuron_sample=20,
     batch_size=4096,
-    lr=1e-2,
+    lr=1e-3,
     beta1=0.9,
     beta2=0.999,
     aux_fraction=1/64,
-    subtract_mean=True
+    subtract_mean=True,
+
+    num_batches_before_increase=1000,
+    increase_interval=500,
+    final_multiplier=10.,
+    use_scheduler=True,
+    decay_rate=0.997,
+    final_rate=1e-3
     # aux_fraction=None
 )
 
 trainer = OSAETrainer(cfg, s3=s3_client)
 
 # %%
-trainer.train(9000)
+
+run = wandb.init(project="osae-investigation", config=asdict(cfg))
+
+trainer.train(9000, run)
+
+# %%
+
+run.finish()
 
 # %%
 feature_counts = trainer.get_feature_counts_for_batches(10)

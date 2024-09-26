@@ -50,6 +50,15 @@ class OSAEConfig:
     beta1: float
     beta2: float
 
+    # Scheduler
+    num_batches_before_increase: int
+    increase_interval: int
+    final_multiplier: float
+    use_scheduler: bool
+
+    decay_rate: float
+    final_rate: float
+
     aux_fraction: Optional[float] = None
 
     @property
