@@ -49,3 +49,5 @@ transformers~=4.44  # for esm inference
 
 boto3
 accelerate
+
+wandb~=0.18.1
