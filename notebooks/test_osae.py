@@ -34,6 +34,38 @@ trainer = OSAETrainer(cfg, s3=s3_client)
 trainer.train(9000)
 
 # %%
+feature_counts = trainer.get_feature_counts_for_batches(10)
+
+# %%
+# Filter feature_counts so we only
+
+plt.hist(feature_counts.detach().cpu().numpy(), bins=64, log=False, range=(0, 200))
+plt.show()
+
+# %%
+import torch
+
+bins = torch.bincount(feature_counts)
+
+# %%
+plt.plot(bins[:40].detach().cpu().numpy())
+
+
+# feature_counts.argmax()
+
+# %%
+(feature_counts > 3000 ).sum()
+
+# %%
+feature_counts.sum() / 32
+
+# %%
+feature_counts.float().std()
+
+
+
+
+
 
 
 

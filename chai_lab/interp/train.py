@@ -115,6 +115,19 @@ class OSAETrainer:
     def num_dead_per_batch(self):
         return np.array(self._num_dead_per_batch).T
 
+    def get_feature_counts_for_batches(self, batches: int):
+        total_feature_counts = torch.zeros(
+            self.cfg.num_latents, dtype=torch.int32, device=self.cfg.device
+        )
+
+        for _ in range(batches):
+            batch = self.data_loader.next_batch()
+            batch = batch.to(self.cfg.device)
+
+            total_feature_counts += self.osae(batch, self.dead_mask).feature_counts
+
+        return total_feature_counts
+
     def train(self, num_batches):
         print(f"Learning rate: {self.cfg.lr:0.2e}")
         optimizer = torch.optim.Adam(
