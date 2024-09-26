@@ -42,6 +42,7 @@ class DataLoader:
     def __init__(
         self,
         batch_size,
+        subtract_mean,
         s3,
         bucket_name=bucket_name,
         suppress_logs=False,
@@ -55,6 +56,10 @@ class DataLoader:
 
         self.super_batch_index = 0
         self._load_super_batch(self.super_batch_index)
+
+        self.mean = self.super_batch[:50_000].mean(dim=0)
+
+        self.subtract_mean = subtract_mean
 
     def _load_super_batch(self, super_batch_index: int, chunk_size=1024 * 1024):
         key = super_batch_s3_key(super_batch_index)
@@ -119,4 +124,7 @@ class DataLoader:
 
         self.batch_index += 1
 
-        return acts
+        if self.subtract_mean:
+            return acts - self.mean
+        else:
+            return acts

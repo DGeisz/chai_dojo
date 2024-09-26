@@ -25,8 +25,9 @@ cfg = SAEConfig(
     beta1=0.9,
     beta2=0.999,
 
+
     aux_fraction=1/32,
-    aux_loss=False
+    aux_loss=True
 )
 
 
@@ -45,7 +46,6 @@ cfg = SAEConfig(
 trainer = SAETrainer(cfg, s3=s3_client, suppress_logs=True)
 
 # %%
-
 trainer.train(1000)
 
 
@@ -58,7 +58,6 @@ dead_mask = torch.zeros(
 )
 
 # %%
-
 import numpy as np
 
 trainer.num_dead_per_batch
@@ -68,6 +67,7 @@ plt.plot(np.array(trainer.num_dead_per_batch)[:, 1])
 plt.show()
 
 # %%
+
 
 
 plt.plot(trainer.loss_per_batch[:])

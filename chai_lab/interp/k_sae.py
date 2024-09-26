@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from torch import Tensor, nn
 
+from chai_lab.interp.data_loader import DataLoader
 from chai_lab.interp.decoder_utils import decoder_impl
 from chai_lab.interp.config import SAEConfig
 from dataclasses import dataclass
@@ -117,7 +118,8 @@ class KSae(nn.Module):
         # Used as a denominator for putting everything on a reasonable scale
         total_variance = (x - x.mean(0)).pow(2).sum()
 
-        l2_loss = e.pow(2).sum(-1).mean(0)
+        # l2_loss = e.pow(2).sum(-1).mean(0)
+        l2_loss = e.pow(2).sum()
         fvu = l2_loss / total_variance
 
         self.losses.append(l2_loss.item())

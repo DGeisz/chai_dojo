@@ -28,3 +28,30 @@ class SAEConfig:
     buffer_size_in_proteins: int = 0
 
     aux_loss: bool = True
+
+
+@dataclass
+class OSAEConfig:
+    k: int
+    num_latents: int
+    device: str | torch.device
+
+    d_model: int
+
+    num_batches_for_dead_neuron_sample: int
+
+    # Training parameters
+    batch_size: int
+
+    subtract_mean: bool
+
+    # Optimizer parameters
+    lr: float
+    beta1: float
+    beta2: float
+
+    aux_fraction: Optional[float] = None
+
+    @property
+    def latents_per_group(self):
+        return self.num_latents // self.k
