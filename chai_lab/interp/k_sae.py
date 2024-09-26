@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import einops
 import torch
@@ -8,6 +8,7 @@ from torch import Tensor, nn
 
 from chai_lab.interp.decoder_utils import decoder_impl
 from chai_lab.interp.config import SAEConfig
+from dataclasses import dataclass
 
 
 class EncoderOutput(NamedTuple):
@@ -18,8 +19,11 @@ class EncoderOutput(NamedTuple):
     """Indices of the top-k features."""
 
 
-class ForwardOutput(NamedTuple):
+@dataclass
+class ForwardOutput:
     sae_out: Tensor
+
+    pre_acts: Tensor
 
     latent_acts: Tensor
     """Activations of the top-k latents."""
@@ -27,22 +31,29 @@ class ForwardOutput(NamedTuple):
     latent_indices: Tensor
     """Indices of the top-k features."""
 
-    # fvu: Tensor
-    # """Fraction of variance unexplained."""
+    fvu: Tensor
+    """Fraction of variance unexplained."""
 
-    l2_loss: Tensor
+    feature_counts: Tensor
+
+    auxk_loss: Tensor
+    """AuxK loss, if applicable."""
+
+    auxk_acts: Optional[Tensor]
+    """Activations of the top-k latents."""
+
+    auxk_indices: Optional[Tensor]
+    """Indices of the top-k features."""
 
 
 class KSae(nn.Module):
     def __init__(
         self,
         cfg: SAEConfig,
-        mean: Tensor,
         dtype: torch.dtype | None = None,
     ):
         super().__init__()
         self.cfg = cfg
-        self.mean = mean.to(self.cfg.device)
 
         self.encoder = nn.Linear(
             self.cfg.d_in, self.cfg.num_latents, device=self.cfg.device, dtype=dtype
@@ -81,8 +92,8 @@ class KSae(nn.Module):
         """Encode the input and select the top-k latents."""
         return self.select_topk(self.pre_acts(x))
 
-    def encode(self, x: Tensor) -> EncoderOutput:
-        return self._encode(self.normalize_and_center((x)))
+    # def encode(self, x: Tensor) -> EncoderOutput:
+    #     return self._encode(self.normalize_and_center((x)))
 
     def decode(self, top_acts: Tensor, top_indices: Tensor) -> Tensor:
         assert self.W_dec is not None, "Decoder weight was not initialized."
@@ -90,24 +101,77 @@ class KSae(nn.Module):
         y = decoder_impl(top_indices, top_acts.to(self.dtype), self.W_dec.mT)
         return y + self.b_dec
 
-    def normalize_and_center(self, x: Tensor) -> Tensor:
-        x = x - self.mean
-        return x / x.norm(dim=-1, keepdim=True)
-        # return x / x.norm(dim=-1, keepdim=True) - self.mean
+    # def normalize_and_center(self, x: Tensor) -> Tensor:
+    #     x = x - self.mean
+    #     return x / x.norm(dim=-1, keepdim=True)
+    #     # return x / x.norm(dim=-1, keepdim=True) - self.mean
 
-    def forward(self, x: Tensor) -> ForwardOutput:
-        x = self.normalize_and_center(x)
+    def forward(self, x: Tensor, dead_mask: Tensor) -> ForwardOutput:
+        pre_acts = self.pre_acts(x)
 
         # Decode and compute residual
-        top_acts, top_indices = self._encode(x)
+        top_acts, top_indices = self.select_topk(pre_acts)
         sae_out = self.decode(top_acts, top_indices)
         e = sae_out - x
 
+        # Used as a denominator for putting everything on a reasonable scale
+        total_variance = (x - x.mean(0)).pow(2).sum()
+
         l2_loss = e.pow(2).sum(-1).mean(0)
+        fvu = l2_loss / total_variance
 
         self.losses.append(l2_loss.item())
 
-        return ForwardOutput(sae_out, top_acts, top_indices, l2_loss)
+        curr_counts = torch.bincount(
+            top_indices.detach().flatten(), minlength=self.cfg.num_latents
+        )
+
+        dead_mask = curr_counts == 0
+
+        # Second decoder pass for AuxK loss
+        if (
+            self.cfg.aux_loss
+            and dead_mask is not None
+            and (num_dead := int(dead_mask.sum())) > 0
+        ):
+            # Heuristic from Appendix B.1 in the paper
+            k_aux = x.shape[-1] // 2
+
+            # Reduce the scale of the loss if there are a small number of dead latents
+            scale = min(num_dead / k_aux, 1.0)
+            k_aux = min(k_aux, num_dead)
+
+            # Don't include living latents in this loss
+            auxk_latents = torch.where(dead_mask[None], pre_acts, -torch.inf)
+
+            # Top-k dead latents
+            auxk_acts, auxk_indices = auxk_latents.topk(k_aux, sorted=False)
+            # auxk_acts, auxk_indices = auxk_latents.topk(self.cfg.k, sorted=False)
+
+            # Encourage the top ~50% of dead latents to predict the residual of the
+            # top k living latents
+            e_hat = self.decode(auxk_acts, auxk_indices)
+            auxk_loss = (e_hat - e).pow(2).sum()
+            # auxk_loss = scale * auxk_loss / total_variance
+
+            # auxk_loss = (e_hat - x).pow(2).sum()
+            auxk_loss = auxk_loss / total_variance
+
+        else:
+            auxk_loss = sae_out.new_tensor(0.0)
+            auxk_acts, auxk_indices = None, None
+
+        return ForwardOutput(
+            sae_out=sae_out,
+            pre_acts=pre_acts,
+            feature_counts=curr_counts,
+            latent_acts=top_acts,
+            latent_indices=top_indices,
+            fvu=fvu,
+            auxk_loss=auxk_loss,
+            auxk_acts=auxk_acts,
+            auxk_indices=auxk_indices,
+        )
 
     def get_num_dead(self, num_batches: int, gen_batch):
         total_counts = None

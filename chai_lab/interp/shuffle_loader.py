@@ -4,14 +4,19 @@ import os
 import io
 import random
 
+from chai_lab.interp.s3_utils import (
+    NUM_SUPER_BATCHES,
+    pair_file_name,
+    pair_s3_key,
+    bucket_name,
+    super_batch_s3_key,
+)
+
 random.seed(42)
 
 from einops import rearrange
 from chai_lab.interp.quick_utils import (
     AVAILABLE_PDB_IDS,
-    pair_s3_key,
-    pair_file_name,
-    bucket_name,
 )
 
 
@@ -113,7 +118,7 @@ class PairActivationShuffleLoader:
         refill = torch.cat(acts, dim=0)
         self.buffer = torch.cat([self.buffer, refill], dim=0)
 
-        self.buffer = self.buffer[torch.randperm(self.buffer.size(0))]
+    #     self.buffer = self.buffer[torch.randperm(self.buffer.size(0))]
 
     def next_batch(self):
         if not self.buffer_init:

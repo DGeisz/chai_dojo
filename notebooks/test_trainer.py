@@ -1,8 +1,10 @@
 # %%
+
 %load_ext autoreload
 %autoreload 2
 
 # %%
+
 import torch
 import matplotlib.pyplot as plt
 
@@ -18,18 +20,129 @@ cfg = SAEConfig(
     device="cuda:0",
     batch_size=4096,
     buffer_size_in_proteins=16,
+    num_batches_for_dead_neuron_sample=20,
     lr=1e-3,
     beta1=0.9,
     beta2=0.999,
-    
+
+    aux_fraction=1/32,
+    aux_loss=False
 )
+
+
+# cfg = SAEConfig(
+#     d_in=256,
+#     num_latents=20,  
+#     k=3,
+#     device="cuda:0",
+#     batch_size=4,
+#     num_batches_for_dead_neuron_sample=20,
+#     lr=1e-3,
+#     beta1=0.9,
+#     beta2=0.999,
+    
+# )
 trainer = SAETrainer(cfg, s3=s3_client, suppress_logs=True)
 
 # %%
+
 trainer.train(1000)
 
+
 # %%
-plt.plot(trainer.loss_per_batch)
+batch = trainer.data_loader.next_batch()
+batch = batch.to(cfg.device)
+
+dead_mask = torch.zeros(
+    cfg.num_latents, dtype=torch.bool, device=cfg.device
+)
+
+# %%
+
+import numpy as np
+
+trainer.num_dead_per_batch
+
+
+plt.plot(np.array(trainer.num_dead_per_batch)[:, 1])
+plt.show()
+
+# %%
+
+
+plt.plot(trainer.loss_per_batch[:])
+plt.show()
+
+
+
+
+# %%
+# dead_mask = not (feature_counts == 0)
+
+
+(
+    _sae_out,
+    _pre_acts,
+    _latent_acts,
+    _latent_indices,
+    fvu,
+    feature_counts,
+    auxk_loss,
+    auxk_acts,
+    auxk_indices,
+) = trainer.sae(batch, dead_mask)
+
+# %%
+_latent_indices, auxk_indices
+
+
+# %%
+
+dead_mask
+
+# %%
+x = batch
+
+
+
+# %%
+x.shape[-1] // 2
+
+
+# %%
+_pre_acts
+
+
+# %%
+dead_mask.sum()
+
+# %%
+torch.where(dead_mask[None], _pre_acts, -torch.inf)
+
+
+
+
+
+# %%
+
+auxk_loss
+
+
+# %%
+feature_counts == 0
+
+
+
+
+
+# %%
+
+plt.plot(trainer.loss_per_batch[400:])
+
+# %%
+
+trainer.data_loader.super_batch.size(0) / 4096
+
 
 
 

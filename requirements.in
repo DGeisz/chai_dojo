@@ -38,7 +38,7 @@ tmtools>=0.0.3     # Python bindings for the TM-align algorithm
 
 # computing, dl
 numpy~=1.21
-pandas[parquet,gcp,aws]~=2.1 
+# pandas[parquet,gcp,aws]~=2.1 
 # polars              
 einops~=0.8
 jaxtyping>=0.2.25   # versions <0.2.25 do not easily support runtime typechecking

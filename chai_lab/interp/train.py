@@ -1,8 +1,8 @@
 import torch
 
 from chai_lab.interp.config import SAEConfig
+from chai_lab.interp.data_loader import DataLoader
 from chai_lab.interp.k_sae import KSae
-from chai_lab.interp.shuffle_loader import PairActivationShuffleLoader
 
 
 class SAETrainer:
@@ -10,15 +10,14 @@ class SAETrainer:
         self.cfg = cfg
         self.s3 = s3
 
-        self.shuffle_loader = PairActivationShuffleLoader(
+        self.data_loader = DataLoader(
             batch_size=cfg.batch_size,
             s3=s3,
-            buffer_size_in_proteins=cfg.buffer_size_in_proteins,
-            suppress_logs=suppress_logs,
         )
 
-        self.sae = KSae(cfg, self.shuffle_loader.get_mean(40))
+        self.sae = KSae(cfg)
         self.loss_per_batch = []
+        self.num_dead_per_batch = []
 
     def train(self, num_batches):
         print(f"Learning rate: {self.cfg.lr:0.2e}")
@@ -28,11 +27,45 @@ class SAETrainer:
             betas=(self.cfg.beta1, self.cfg.beta2),
         )
 
+        dead_mask = torch.zeros(
+            self.cfg.num_latents, dtype=torch.bool, device=self.cfg.device
+        )
+
+        total_feature_counts = torch.zeros(
+            self.cfg.num_latents, dtype=torch.int32, device=self.cfg.device
+        )
+
         for i in range(num_batches):
-            batch = self.shuffle_loader.next_batch()
+            batch = self.data_loader.next_batch()
             batch = batch.to(self.cfg.device)
 
-            _, _, _, loss = self.sae(batch)
+            # (
+            #     _sae_out,
+            #     _pre_acts,
+            #     _latent_acts,
+            #     _latent_indices,
+            #     fvu,
+            #     feature_counts,
+            #     auxk_loss,
+            # ) = self.sae(batch, dead_mask)
+
+            sae_output = self.sae(batch, dead_mask)
+
+            total_feature_counts += sae_output.feature_counts
+
+            if i > 0 and i % self.cfg.num_batches_for_dead_neuron_sample == 0:
+                dead_mask = total_feature_counts == 0
+
+                num_dead = dead_mask.sum().item()
+
+                total_feature_counts = torch.zeros(
+                    self.cfg.num_latents, dtype=torch.int32, device=self.cfg.device
+                )
+
+                self.num_dead_per_batch.append((i, num_dead))
+
+            loss = sae_output.fvu + self.cfg.aux_fraction * sae_output.auxk_loss
+
             loss.backward()
             self.loss_per_batch.append(loss.item())
 
@@ -42,8 +75,8 @@ class SAETrainer:
             optimizer.zero_grad()
 
             if i % 50 == 0:
-                print(f"Batch {i} loss: {loss.item()}")
-            if i % 100 == 0:
+                num_dead = dead_mask.sum().item()
+
                 print(
-                    f"Num dead: {self.sae.get_num_dead(10, self.shuffle_loader.next_batch)}"
+                    f"BATCH {i} LOSS: {loss.item():.4g} | NUM DEAD: {num_dead} | NUM ALIVE: {self.cfg.num_latents - num_dead}"
                 )
