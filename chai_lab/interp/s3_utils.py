@@ -6,6 +6,8 @@ pair_prefix = "chai/acts"
 single_seq_prefix = "chai/single_seq_acts"
 super_batch_folder = "chai/aggregated_acts"
 
+models_folder = "chai/models"
+
 local_cache_dir = "/tmp/chai"
 
 NUM_SUPER_BATCHES = 15
@@ -32,3 +34,7 @@ def get_local_filename(filename: str):
     os.makedirs(local_cache_dir, exist_ok=True)
 
     return os.path.join(local_cache_dir, filename)
+
+
+def get_model_key(file_name: str):
+    return f"{models_folder}/{file_name}"
