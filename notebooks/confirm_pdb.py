@@ -107,10 +107,12 @@ plt.show()
 def p(t):
     return t.detach().cpu().numpy()
 
-thres = 1000
+bottom_thres = 100
+top_thres = 200
 
-t1 = torch.nonzero(c1 > thres).squeeze()
-t2 = torch.nonzero(c2 > thres).squeeze()
+t1 = torch.nonzero(torch.logical_and(bottom_thres < c1, c1 < top_thres)).squeeze()
+t2 = torch.nonzero(torch.logical_and(bottom_thres < c2, c2 < top_thres)).squeeze()
+# t2 = torch.nonzero(c2 < thres).squeeze()
 
 print("PDB 1:", p(t1), len(t1))
 print("PDB 2:", p(t2), len(t2))
