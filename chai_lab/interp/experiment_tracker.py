@@ -44,8 +44,6 @@ class ExperimentTracker:
         # Extend config with the commit hash
         config["commit"] = self.repo.head.commit.hexsha
 
-        raise ValueError("Fuck you")
-
         self.run = wandb.init(
             project=project, config=config, notes=experiment_description, **kwargs
         )
