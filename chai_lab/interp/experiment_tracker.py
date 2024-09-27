@@ -23,13 +23,13 @@ class ExperimentTracker:
             self.run.finish()
 
         files_to_commit: List[str] = [
-            item.a_path
-            for item in self.repo.index.diff(None)
-            if item.a_path in self.repo.untracked_files
+            item.a_path for item in self.repo.index.diff(None)
         ]
 
         if not only_commit_tracked_files:
             files_to_commit.extend(self.repo.untracked_files)
+
+        print("Files to commit:", files_to_commit)
 
         if any(not f.endswith(".py") for f in files_to_commit):
             raise ValueError(
@@ -44,8 +44,17 @@ class ExperimentTracker:
         # Extend config with the commit hash
         config["commit"] = self.repo.head.commit.hexsha
 
+        raise ValueError("Fuck you")
+
         self.run = wandb.init(
             project=project, config=config, notes=experiment_description, **kwargs
         )
 
         return self.run
+
+    def finish(self):
+        if self.run is not None:
+            self.run.finish()
+            self.run = None
+        else:
+            print("No run to finish!")

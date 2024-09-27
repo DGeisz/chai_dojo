@@ -1,4 +1,5 @@
 # %%
+
 %load_ext autoreload
 %autoreload 2
 
@@ -10,6 +11,7 @@ import wandb
 from dataclasses import asdict
 
 from chai_lab.interp.config import OSAEConfig
+from chai_lab.interp.experiment_tracker import ExperimentTracker
 from chai_lab.interp.train import OSAETrainer
 from chai_lab.interp.s3 import s3_client
 
@@ -17,6 +19,8 @@ from chai_lab.interp.s3 import s3_client
 
 # %%
 wandb.login()
+
+tracker = ExperimentTracker()
 
 
 # %%
@@ -38,7 +42,7 @@ cfg = OSAEConfig(
     num_batches_before_increase=1000,
     increase_interval=500,
     final_multiplier=10.,
-    use_scheduler=True,
+    use_scheduler=False,
     decay_rate=0.997,
     final_rate=1e-3
     # aux_fraction=None
@@ -47,13 +51,45 @@ cfg = OSAEConfig(
 trainer = OSAETrainer(cfg, s3=s3_client)
 
 # %%
+# run = wandb.init(project="osae-investigation", config=asdict(cfg))
 
-run = wandb.init(project="osae-investigation", config=asdict(cfg))
+run = tracker.new_experiment(
+    "osae-investigation",
+    "Making sure the exp tracker works",
+    config=asdict(cfg),
+)
 
-trainer.train(9000, run)
 
 # %%
+from git import Repo
 
+repo = Repo(search_parent_directories=True)
+
+
+[
+    item.a_path
+    for item in repo.index.diff(None)
+    if item.a_path in repo.untracked_files
+]
+
+
+# files_to_commit = [
+#     item.a_path
+#     for item in self.repo.index.diff(None)
+#     if item.a_path in self.repo.untracked_files
+# ]
+
+# if not only_commit_tracked_files:
+#     files_to_commit.extend(self.repo.untracked_files)
+
+# %%
+    
+
+
+
+trainer.train(1000, run)
+
+# %%
 run.finish()
 
 # %%
