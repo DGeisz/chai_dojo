@@ -55,24 +55,12 @@ trainer = OSAETrainer(cfg, s3=s3_client)
 
 run = tracker.new_experiment(
     "osae-investigation",
-    "Making sure the exp tracker works",
+    "Second attempt at romance",
     config=asdict(cfg),
 )
 
 
 # %%
-from git import Repo
-
-repo = Repo(search_parent_directories=True)
-
-
-[
-    item.a_path
-    for item in repo.index.diff(None)
-    if item.a_path in repo.untracked_files
-]
-
-
 # files_to_commit = [
 #     item.a_path
 #     for item in self.repo.index.diff(None)
@@ -83,11 +71,16 @@ repo = Repo(search_parent_directories=True)
 #     files_to_commit.extend(self.repo.untracked_files)
 
 # %%
-    
+
+# %%
+trainer.osae.save_model_to_aws(s3_client, "osae_test.pth")
+
+# %%
 
 
 
-trainer.train(1000, run)
+
+# trainer.train(1000, run)
 
 # %%
 run.finish()

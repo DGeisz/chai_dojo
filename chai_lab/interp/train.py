@@ -42,7 +42,9 @@ class OSAETrainer:
             batch = self.data_loader.next_batch()
             batch = batch.to(self.cfg.device)
 
-            total_feature_counts += self.osae(batch, self.dead_mask).feature_counts
+            total_feature_counts += self.osae.forward(
+                batch, self.dead_mask
+            ).feature_counts
 
         return total_feature_counts
 
