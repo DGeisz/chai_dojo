@@ -64,16 +64,13 @@ run = tracker.new_experiment(
 
 
 # %%
-trainer.train(1000, run)
+trainer.train(9000, run)
 
 # %%
-
-trainer.osae.save_model_to_aws(s3_client, "osae_test.pth")
+trainer.osae.save_model_to_aws(s3_client, f"osae_1EN3_to_4EN2_{32 * 2048}.pth")
 
 # %%
 new_osae = OSae(cfg, dtype=torch.bfloat16)
-
-# %%
 new_osae.load_model_from_aws(s3_client, "osae_test.pth")
 
 # %%
@@ -89,6 +86,7 @@ new_osae.load_model_from_aws(s3_client, "osae_test.pth")
 # trainer.train(1000, run)
 
 # %%
+
 run.finish()
 
 # %%

@@ -166,6 +166,22 @@ class OSae(nn.Module):
     ) -> Bool[Tensor, "k d_group"]:
         return flat_mask.view(self.cfg.k, self.cfg.latents_per_group)
 
+    def get_latent_acts_and_indices(self, x, correct_indices=True):
+        x -= self.b_dec
+
+        acts = einops.einsum(
+            x, self.encoder, "batch d_model, k d_group d_model -> batch k d_group"
+        )
+
+        acts += self.b_enc
+
+        max_vals, max_indices = acts.max(dim=-1)
+
+        if correct_indices:
+            max_indices += self.count_helper
+
+        return max_vals, max_indices
+
     def forward(self, x, dead_mask=None):
         x -= self.b_dec
 
