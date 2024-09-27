@@ -1,5 +1,4 @@
 # %%
-
 %load_ext autoreload
 %autoreload 2
 
@@ -7,11 +6,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import wandb
+import torch
 
 from dataclasses import asdict
 
 from chai_lab.interp.config import OSAEConfig
 from chai_lab.interp.experiment_tracker import ExperimentTracker
+from chai_lab.interp.o_sae import OSae
 from chai_lab.interp.train import OSAETrainer
 from chai_lab.interp.s3 import s3_client
 
@@ -41,8 +42,10 @@ cfg = OSAEConfig(
 
     num_batches_before_increase=1000,
     increase_interval=500,
-    final_multiplier=10.,
-    use_scheduler=False,
+    final_multiplier=40.,
+    use_scheduler=True,
+
+    use_decay=False,
     decay_rate=0.997,
     final_rate=1e-3
     # aux_fraction=None
@@ -55,27 +58,30 @@ trainer = OSAETrainer(cfg, s3=s3_client)
 
 run = tracker.new_experiment(
     "osae-investigation",
-    "Second attempt at romance",
+    "Seeing if we can sneak up on a really high learning rate after waiting for a bit",
     config=asdict(cfg),
 )
 
 
 # %%
-# files_to_commit = [
-#     item.a_path
-#     for item in self.repo.index.diff(None)
-#     if item.a_path in self.repo.untracked_files
-# ]
-
-# if not only_commit_tracked_files:
-#     files_to_commit.extend(self.repo.untracked_files)
+trainer.train(1000, run)
 
 # %%
 
-# %%
 trainer.osae.save_model_to_aws(s3_client, "osae_test.pth")
 
 # %%
+new_osae = OSae(cfg, dtype=torch.bfloat16)
+
+# %%
+new_osae.load_model_from_aws(s3_client, "osae_test.pth")
+
+# %%
+# Check if the encoder data is the same
+(trainer.osae.encoder == new_osae.encoder).all()
+
+
+
 
 
 

@@ -56,6 +56,7 @@ class OSAEConfig:
     final_multiplier: float
     use_scheduler: bool
 
+    use_decay: bool
     decay_rate: float
     final_rate: float
 

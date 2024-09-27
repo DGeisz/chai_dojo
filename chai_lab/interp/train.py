@@ -69,6 +69,8 @@ class OSAETrainer:
                 return 1.0 + (self.cfg.final_multiplier - 1.0) * (
                     increase_i / self.cfg.increase_interval
                 )
+            elif not self.cfg.use_decay:
+                return self.cfg.final_multiplier
             else:
                 final_i = batch_idx - (
                     self.cfg.num_batches_before_increase + self.cfg.increase_interval
