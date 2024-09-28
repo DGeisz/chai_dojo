@@ -18,8 +18,6 @@ from chai_lab.interp.train import OSAETrainer
 
 
 # %%
-
-# %%
 def get_flat_acts_for_pdb(index: int):
     fasta = SHORT_PROTEIN_FASTAS[index]
 

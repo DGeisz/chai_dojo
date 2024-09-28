@@ -8,7 +8,7 @@ from typing import NamedTuple, Optional
 from jaxtyping import Float, Int, Bool
 from huggingface_hub import PyTorchModelHubMixin
 
-from chai_lab.interp.config import OSAEConfig
+from chai_lab.interp.config import OSAEConfig, EXAMPLE_CONFIG
 from chai_lab.interp.data_loader import DataLoader
 from chai_lab.interp.s3_utils import get_model_key, bucket_name
 
@@ -22,7 +22,7 @@ class OSAEOutputs(NamedTuple):
 class OSae(nn.Module):
     def __init__(
         self,
-        cfg: OSAEConfig,
+        cfg: OSAEConfig = EXAMPLE_CONFIG,
         data_loader: Optional[DataLoader] = None,
         dtype: torch.dtype = torch.bfloat16,
     ):

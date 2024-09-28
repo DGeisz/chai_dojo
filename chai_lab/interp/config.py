@@ -65,3 +65,28 @@ class OSAEConfig:
     @property
     def latents_per_group(self):
         return self.num_latents // self.k
+
+
+EXAMPLE_CONFIG = OSAEConfig(
+    k=32,
+    # num_latents=256 * 256,
+    num_latents=32 * 2048,
+    # num_latents=32 * 1024,
+    device="cuda:0",
+    d_model=256,
+    num_batches_for_dead_neuron_sample=20,
+    batch_size=4096,
+    lr=1e-3,
+    beta1=0.9,
+    beta2=0.999,
+    aux_fraction=1 / 64,
+    subtract_mean=True,
+    num_batches_before_increase=1000,
+    increase_interval=500,
+    final_multiplier=40.0,
+    use_scheduler=True,
+    use_decay=False,
+    decay_rate=0.997,
+    final_rate=1e-3,
+    # aux_fraction=None
+)
