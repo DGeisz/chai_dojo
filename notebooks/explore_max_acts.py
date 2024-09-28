@@ -258,21 +258,46 @@ for bucket_value, bucket_rows in zip(unique_buckets, buckets):
     print(bucket_rows)
 
 # %%
-
 a = torch.zeros((5, 5))
+
+# %%
+a[1, 3:10] 
+
 
 # %%
 a[[0, 1], [2, 1]] = torch.tensor([2, 1]).float()
 
 # %%
-a
+list(zip([0, 1], [2, 1], [3,4]))
 
 # %%
-b = torch.tensor([[1, 4, 5, 27, 2], [5, 2, 1, 0, 20]]).float()
-c = b * 10
+
+
 
 # %%
-values, indices = b.sort(dim=-1)
+b = torch.tensor([[1, 4, 5, 27, 2], [5, 2, 1, 0, 20], [4, 3, 25, 3, 2]]).float()
+c = torch.stack([b, b], dim=-1)
+c
+
+# %%
+values, indices = b.sort(dim=-1, descending=True)
+
+# %%
+c.gather(index=
+         torch.stack([indices, indices]
+                     , dim=-1), dim=-2)
+
+# %%
+torch.stack([indices, indices], dim=-1) == indices.unsqueeze(-1).expand(-1, -1, 2)
+
+# torch.stack([indices, indices], dim=-1).shape, indices.shape, indices.unsqueeze(-1).expand(-1, -1, 2).shape
+
+
+
+
+# %%
+values
+
 
 # %%
 indices

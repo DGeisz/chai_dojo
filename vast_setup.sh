@@ -32,3 +32,8 @@ source ~/miniconda3/bin/activate chai-env
 
 pip install -r requirements.in
 pip install -e .
+
+# Git config
+git config --global user.email "dannygeisz@berkeley.edu"
+git config --global user.name "Danny"
+git config --global credential.helper store

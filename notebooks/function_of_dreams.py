@@ -1,7 +1,11 @@
+# %%
+
 import io
 import torch
 
 from einops import rearrange
+from tqdm import tqdm
+from time import time
 
 from chai_lab.interp.config import OSAEConfig
 from chai_lab.interp.data_loader import DataLoader
@@ -13,12 +17,15 @@ from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.train import OSAETrainer
 
 
-def pdbid_to_int(pdb_id):
+# %%
+def pdbid_to_int(pdb_id: str):
     return int(pdb_id.upper(), 36)
 
 
 new_osae = OSae(dtype=torch.bfloat16)
 new_osae.load_model_from_aws(s3_client, f"osae_1EN3_to_4EN2_{32 * 2048}.pth")
+
+torch.set_default_device("cuda:0")
 
 
 def int_to_pdbid(number):
@@ -42,22 +49,27 @@ def create_flat_coords(fasta: FastaPDB, k: int):
 
     # Stack rows and columns along the last dimension to create the (N, N, 2) tensor
     coords = torch.stack((rows, cols, pdb_tensor), dim=-1).to(torch.int)
-    flat_coords = rearrange(coords, "n m k -> (n m) k")
+    flat_coords = rearrange(coords, "n m d -> (n m) d")
 
     k_stack = torch.stack([flat_coords for _ in range(k)], dim=1)
-    flat_k_stack = rearrange(k_stack, "n m k -> (n m) k")
+    flat_k_stack = rearrange(k_stack, "n m d -> (n m) d")
 
     return flat_k_stack
 
 
-def function_of_dreams(index: int, osae: OSae):
+def group_and_sort_activations_by_index(
+    index: int, osae: OSae, data_loader: DataLoader
+):
     fasta = SHORT_PROTEIN_FASTAS[index]
 
     key = pair_s3_key(fasta.pdb_id)
+
+    print(f"Loading {key}")
     res = s3_client.get_object(Bucket=bucket_name, Key=key)
     acts = torch.load(io.BytesIO(res["Body"].read()))["pair_acts"]
 
-    data_loader = DataLoader(1, True, s3_client)
+    print(f"Finished loading {key}")
+
     acts_mean = data_loader.mean
     flat_acts = rearrange(acts, "i j d -> (i j) d") - acts_mean.cuda()
 
@@ -68,9 +80,9 @@ def function_of_dreams(index: int, osae: OSae):
     flat_act_values = rearrange(sae_values, "b k -> (b k)")
     flat_act_indices = rearrange(sae_indices, "b k -> (b k)")
 
-    flat_coords = create_flat_coords(fasta, osae.cfg.k)
+    flat_coords = create_flat_coords(fasta, osae.cfg.k).to(flat_act_indices.device)
 
-    multiplier = torch.ceil(flat_act_values.abs().max() / 100) * 100
+    multiplier = (torch.ceil(flat_act_values.abs().max() / 100) + 1) * 100
 
     flat_sorter = multiplier * flat_act_indices - flat_act_values
 
@@ -97,3 +109,75 @@ def function_of_dreams(index: int, osae: OSae):
 
     value_buckets = torch.split(sorted_act_values, bucket_sizes.tolist())
     coord_buckets = torch.split(sorted_coords, bucket_sizes.tolist())
+
+    print("Finished Grouping")
+
+    return unique_buckets, value_buckets, coord_buckets
+
+
+def get_n_max_activations(
+    osae: OSae, n: int, start_index: int, amount: int, data_loader=None
+):
+    num_latents = osae.cfg.num_latents
+
+    value_aggregator = -1 * torch.ones((num_latents, 2 * n)).float()
+    coord_aggregator = -1 * torch.ones((num_latents, 2 * n, 3)).int()
+
+    if data_loader is None:
+        data_loader = DataLoader(1, True, s3_client)
+
+    for i in range(start_index, start_index + amount):
+        # Set the back half of values to -1
+        value_aggregator[:, n:] = -1
+
+        unique_buckets, value_buckets, coord_buckets = (
+            group_and_sort_activations_by_index(i, osae, data_loader)
+        )
+
+        for bucket, values, coords in tqdm(
+            list(zip(unique_buckets, value_buckets, coord_buckets))
+        ):
+            num_values_to_add = min([n, values.size(0)])
+
+            value_aggregator[bucket, n : n + num_values_to_add] = values[
+                :num_values_to_add
+            ]
+
+            coord_aggregator[bucket, n : n + num_values_to_add] = coords[
+                :num_values_to_add
+            ]
+
+        value_aggregator, sort_indices = value_aggregator.sort(dim=-1, descending=True)
+
+        coord_aggregator = coord_aggregator.gather(
+            index=sort_indices.unsqueeze(-1).expand(-1, -1, 3), dim=-2
+        )
+
+    return value_aggregator[:, :n], coord_aggregator[:, :n]
+
+
+# %%
+data_loader = DataLoader(1, True, s3_client)
+
+
+# %%
+start = time()
+
+value_agg, coord_agg = get_n_max_activations(
+    new_osae, 5, 0, 10, data_loader=data_loader
+)
+
+print("Time taken:", time() - start)
+# %%
+value_agg, coord_agg
+
+# %%
+int_to_pdbid(46749)
+
+# %%
+bins = torch.bincount(coord_agg[:, :, 2].flatten() + 1)
+
+# %%
+bins[[46715, 46750, 46751, 46786, 46787]]
+
+# %%
