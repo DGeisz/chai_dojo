@@ -2,10 +2,15 @@ import torch
 import os
 
 from chai_lab.interp.data_loader import load_s3_object_with_progress
+from chai_lab.interp.pdb_utils import int_to_pdbid
 from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.s3_utils import bucket_name, get_local_filename
 from chai_lab.interp.quick_utils import SHORT_PROTEINS_DICT
-from chai_lab.interp.visualizer.server.visualizer_controller import VisualizerController
+from chai_lab.interp.visualizer.server.visualizer_controller import (
+    ProteinToVisualize,
+    VisualizationCommand,
+    VisualizerController,
+)
 
 from typing import TypedDict
 
@@ -35,7 +40,7 @@ def load_max_acts_from_s3():
     return max_acts
 
 
-class MaxActs:
+class MaxActsAnalyzer:
     def __init__(self, ngrok_url: str):
         self.max_acts_dict = load_max_acts_from_s3()
 
@@ -57,3 +62,29 @@ class MaxActs:
         return list(
             zip(values[:right_index].tolist(), self.coords[key][:right_index].tolist())
         )
+
+    def visualize_in_client(self, feature_id: int, start: int, end: int):
+        max_act_entries = self[feature_id][start:end]
+
+        visualizer_entries = []
+
+        for value, coord in max_act_entries:
+            x, y, pdb_index = coord
+            pdb_id = int_to_pdbid(pdb_index)
+
+            visualizer_entries.append(
+                ProteinToVisualize(
+                    pdb_id=pdb_id,
+                    activation=value,
+                    residues=[x, y],
+                    sequence=SHORT_PROTEINS_DICT[pdb_id].chains[0].sequence,
+                )
+            )
+
+        command = VisualizationCommand(
+            feature_index=feature_id,
+            label=f"{start}:{end}",
+            proteins=visualizer_entries,
+        )
+
+        self.visualizer_controller.visualize_in_interface(command)
