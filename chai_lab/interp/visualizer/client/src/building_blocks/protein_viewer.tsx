@@ -48,6 +48,7 @@ export const ProteinViewer: React.FC<ProteinViewerProps> = (props) => {
       <div
         className={clsx(
           "max-h-[400px] flex-1",
+          "min-h-[400px]",
           "bg-neutral-50",
           "p-4 m-4",
           "rounded-md",

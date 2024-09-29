@@ -2,34 +2,10 @@ import { ProteinViewer } from "./building_blocks/protein_viewer.tsx";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { v4 } from "uuid";
+import { ServerResponse, VisualizationItem } from "./types/basic_types.ts";
+import { ViewerPanel } from "./screens/viewer_panel/viewer_panel.tsx";
 
-interface ProteinToVisualize {
-  pdb_id: string;
-  activation: number;
-  sequence: string;
-  residues: [number, number];
-}
-
-interface VisualizationCommand {
-  feature_index: number;
-  label: string;
-  proteins: ProteinToVisualize[];
-  id?: string;
-}
-
-interface ConnectionResponse {
-  res_type: "connected";
-  data: string;
-}
-
-interface CommandResponse {
-  res_type: "visualize";
-  data: VisualizationCommand;
-}
-
-type ServerResponse = ConnectionResponse | CommandResponse;
-
-const exampleCommand: VisualizationCommand = {
+const exampleCommand: VisualizationItem = {
   feature_index: 999,
   label: "ex",
   id: "default",
@@ -42,7 +18,8 @@ const exampleCommand: VisualizationCommand = {
     },
     {
       pdb_id: "101m",
-      sequence: "MVLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRVKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGNFGADAQGAMNKALELFRKDIAAKYKELGYQG",
+      sequence:
+        "MVLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRVKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGNFGADAQGAMNKALELFRKDIAAKYKELGYQG",
       activation: 0.6,
       residues: [4, 40],
     },
@@ -50,7 +27,7 @@ const exampleCommand: VisualizationCommand = {
 };
 
 export const App = () => {
-  const [tabs, setTabs] = useState<VisualizationCommand[]>([exampleCommand]);
+  const [tabs, setTabs] = useState<VisualizationItem[]>([exampleCommand]);
   const [activeTabId, setActiveTabId] = useState<string>("default");
 
   useEffect(() => {
@@ -80,7 +57,6 @@ export const App = () => {
   }, []);
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
-  const proteins = activeTab?.proteins || [];
 
   return (
     <div className={clsx("h-full flex flex-row")}>
@@ -104,31 +80,13 @@ export const App = () => {
             )}
             onClick={() => setActiveTabId(tab.id || "default")}
           >
-            #{tab.feature_index}
+            #{tab.feature_index} {tab.label}
           </div>
         ))}
       </div>
 
       <div className={clsx("h-full flex-1", "pt-6")}>
-        <div
-          className={clsx(
-            "ml-6",
-            "text-xl",
-            "font-semibold",
-            "text-neutral-700",
-          )}
-        >
-          Feature: #{activeTab.feature_index}
-        </div>
-        <div className={clsx("h-full flex-1", "grid grid-cols-3 gap-4")}>
-          {proteins.map((protein) => (
-            <ProteinViewer
-              key={`${protein.pdb_id}-${protein.residues.join("-")}}`}
-              pdbId={protein.pdb_id}
-              residueIds={protein.residues}
-            />
-          ))}
-        </div>
+        <ViewerPanel item={activeTab} />
       </div>
     </div>
   );
