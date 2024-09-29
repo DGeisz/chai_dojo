@@ -6,7 +6,6 @@
 import io
 import torch
 
-
 from einops import rearrange
 
 from chai_lab.interp.config import OSAEConfig

@@ -1,7 +1,6 @@
-# %%
-
 import io
 import torch
+import os
 
 from einops import rearrange
 from tqdm import tqdm
@@ -15,15 +14,15 @@ from chai_lab.interp.quick_utils import SHORT_PROTEIN_FASTAS
 from chai_lab.interp.s3_utils import pair_s3_key, bucket_name
 from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.train import OSAETrainer
+from chai_lab.utils.memory import get_gpu_memory
 
 
-# %%
 def pdbid_to_int(pdb_id: str):
     return int(pdb_id.upper(), 36)
 
 
-new_osae = OSae(dtype=torch.bfloat16)
-new_osae.load_model_from_aws(s3_client, f"osae_1EN3_to_4EN2_{32 * 2048}.pth")
+trained_sae = OSae(dtype=torch.bfloat16)
+trained_sae.load_model_from_aws(s3_client, f"osae_1EN3_to_4EN2_{32 * 2048}.pth")
 
 torch.set_default_device("cuda:0")
 
@@ -55,6 +54,46 @@ def create_flat_coords(fasta: FastaPDB, k: int):
     flat_k_stack = rearrange(k_stack, "n m d -> (n m) d")
 
     return flat_k_stack
+
+
+pdb_id_to_fasta = {fasta.pdb_id: fasta for fasta in SHORT_PROTEIN_FASTAS}
+
+
+def spot_check(
+    pdb_id: str | int, x: int, y: int, feature_id: int, osae: OSae, data_loader=None
+):
+    if isinstance(pdb_id, int):
+        pdb_id = int_to_pdbid(pdb_id)
+
+    if pdb_id not in pdb_id_to_fasta:
+        raise ValueError("Invalid pdb_id")
+
+    if data_loader is None:
+        data_loader = DataLoader(1, True, s3_client)
+
+    mean = data_loader.mean
+
+    fasta = pdb_id_to_fasta[pdb_id]
+
+    key = pair_s3_key(fasta.pdb_id)
+
+    res = s3_client.get_object(Bucket=bucket_name, Key=key)
+    acts = torch.load(io.BytesIO(res["Body"].read()))["pair_acts"]
+
+    one_act = acts[x, y].unsqueeze(0) - mean.cuda()
+
+    sae_values, sae_indices = osae.get_latent_acts_and_indices(
+        one_act, correct_indices=True
+    )
+
+    sae_values = sae_values.squeeze()
+    sae_indices = sae_indices.squeeze()
+
+    # print("SAE Stuff", sae_values, sae_indices)
+
+    index = torch.nonzero((sae_indices == feature_id).int())
+
+    return sae_values[index].flatten().item(), sae_indices[index].flatten().item()
 
 
 def group_and_sort_activations_by_index(
@@ -127,6 +166,8 @@ def get_n_max_activations(
         data_loader = DataLoader(1, True, s3_client)
 
     for i in range(start_index, start_index + amount):
+        get_gpu_memory()
+
         # Set the back half of values to -1
         value_aggregator[:, n:] = -1
 
@@ -157,27 +198,41 @@ def get_n_max_activations(
 
 
 # %%
-data_loader = DataLoader(1, True, s3_client)
 
 
-# %%
-start = time()
+# # %%
+# data_loader = DataLoader(1, True, s3_client)
 
-value_agg, coord_agg = get_n_max_activations(
-    new_osae, 5, 0, 10, data_loader=data_loader
-)
+# # %%
+# spot_check(46785, 34, 32, 0, new_osae, data_loader=data_loader)
 
-print("Time taken:", time() - start)
-# %%
-value_agg, coord_agg
 
-# %%
-int_to_pdbid(46749)
+# # %%
+# start = time()
 
-# %%
-bins = torch.bincount(coord_agg[:, :, 2].flatten() + 1)
+# n = 50
+# start_index = 0
+# end_index = 10
 
-# %%
-bins[[46715, 46750, 46751, 46786, 46787]]
+# amount = end_index - start_index
 
-# %%
+
+# value_agg, coord_agg = get_n_max_activations(
+#     new_osae, 50, 0, 10, data_loader=data_loader
+# )
+
+# # %%
+# max_act_dict = {"values": value_agg, "coords": coord_agg}
+# file_name = f"max_acts_{n}_{amount}.pt2"
+
+# torch.save(max_act_dict, file_name)
+
+# # Upload file to s3 bucket
+# s3_client.upload_file(file_name, bucket_name, f"chai/max_acts/{file_name}")
+
+# os.remove(file_name)
+
+# # %%
+# !nvidia-smi
+
+# # %%
