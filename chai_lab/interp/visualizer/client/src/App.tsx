@@ -6,11 +6,13 @@ import { v4 } from "uuid";
 interface ProteinToVisualize {
   pdb_id: string;
   activation: number;
-  residues: number[];
+  sequence: string;
+  residues: [number, number];
 }
 
 interface VisualizationCommand {
   feature_index: number;
+  label: string;
   proteins: ProteinToVisualize[];
   id?: string;
 }

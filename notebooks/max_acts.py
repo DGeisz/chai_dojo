@@ -4,6 +4,8 @@ from chai_lab.interp.max_acts_aggregation import get_n_max_activations, trained_
 from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.s3_utils import bucket_name
 
+torch.set_grad_enabled(False)
+
 print("Finished Loading External Modules!")
 
 n = 500

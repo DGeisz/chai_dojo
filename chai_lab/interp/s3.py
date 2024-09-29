@@ -8,9 +8,13 @@ with open(creds_path, "r") as file:
     creds = yaml.safe_load(file)
 
 
-s3_client = boto3.client(
-    "s3",
-    aws_access_key_id=creds["access_key"],
-    aws_secret_access_key=creds["secret_key"],
-    region_name=creds["region"],
-)
+def create_new_s3_client():
+    return boto3.client(
+        "s3",
+        aws_access_key_id=creds["access_key"],
+        aws_secret_access_key=creds["secret_key"],
+        region_name=creds["region"],
+    )
+
+
+s3_client = create_new_s3_client()

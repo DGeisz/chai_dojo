@@ -9,11 +9,13 @@ from typing import List
 class ProteinToVisualize(BaseModel):
     pdb_id: str
     activation: float
+    sequence: str
     residues: List[int]
 
 
 class VisualizationCommand(BaseModel):
     feature_index: int
+    label: str
     proteins: List[ProteinToVisualize]
 
 

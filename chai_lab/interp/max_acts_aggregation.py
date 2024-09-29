@@ -15,25 +15,15 @@ from chai_lab.interp.s3_utils import pair_s3_key, bucket_name
 from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.train import OSAETrainer
 from chai_lab.utils.memory import get_gpu_memory
+from notebooks.explore_max_acts import int_to_pdbid, pdbid_to_int
 
-
-def pdbid_to_int(pdb_id: str):
-    return int(pdb_id.upper(), 36)
+torch.set_grad_enabled(False)
 
 
 trained_sae = OSae(dtype=torch.bfloat16)
 trained_sae.load_model_from_aws(s3_client, f"osae_1EN3_to_4EN2_{32 * 2048}.pth")
 
 torch.set_default_device("cuda:0")
-
-
-def int_to_pdbid(number):
-    base36_chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".lower()
-    result = []
-    while number > 0:
-        result.append(base36_chars[number % 36])
-        number //= 36
-    return "".join(reversed(result)).zfill(4)  # Ensure it is 4 characters long
 
 
 def create_flat_coords(fasta: FastaPDB, k: int):
