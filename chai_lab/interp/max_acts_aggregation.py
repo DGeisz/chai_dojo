@@ -16,6 +16,8 @@ from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.train import OSAETrainer
 from chai_lab.utils.memory import get_gpu_memory
 
+torch.set_grad_enabled(False)
+
 
 def pdbid_to_int(pdb_id: str):
     return int(pdb_id.upper(), 36)
@@ -52,6 +54,8 @@ def create_flat_coords(fasta: FastaPDB, k: int):
 
     k_stack = torch.stack([flat_coords for _ in range(k)], dim=1)
     flat_k_stack = rearrange(k_stack, "n m d -> (n m) d")
+
+    del rows, cols, pdb_tensor, coords, k_stack
 
     return flat_k_stack
 
@@ -92,6 +96,8 @@ def spot_check(
     # print("SAE Stuff", sae_values, sae_indices)
 
     index = torch.nonzero((sae_indices == feature_id).int())
+
+    del one_act
 
     return sae_values[index].flatten().item(), sae_indices[index].flatten().item()
 
@@ -150,8 +156,20 @@ def group_and_sort_activations_by_index(
     coord_buckets = torch.split(sorted_coords, bucket_sizes.tolist())
 
     print("Finished Grouping")
+    del (
+        flat_acts,
+        sae_values,
+        sae_indices,
+        flat_act_values,
+        flat_act_indices,
+        flat_coords,
+    )
 
     return unique_buckets, value_buckets, coord_buckets
+
+
+def get_tensor_memory(tensor):
+    return tensor.element_size() * tensor.nelement()
 
 
 def get_n_max_activations(
@@ -165,8 +183,17 @@ def get_n_max_activations(
     if data_loader is None:
         data_loader = DataLoader(1, True, s3_client)
 
+    start = time()
+
     for i in range(start_index, start_index + amount):
+        print()
+        print(f"{i} / {amount} :: {time() - start}")
         get_gpu_memory()
+        print(
+            "Memory: ",
+            get_tensor_memory(value_aggregator),
+            get_tensor_memory(coord_aggregator),
+        )
 
         # Set the back half of values to -1
         value_aggregator[:, n:] = -1
@@ -193,6 +220,8 @@ def get_n_max_activations(
         coord_aggregator = coord_aggregator.gather(
             index=sort_indices.unsqueeze(-1).expand(-1, -1, 3), dim=-2
         )
+
+        del unique_buckets, value_buckets, coord_buckets
 
     return value_aggregator[:, :n], coord_aggregator[:, :n]
 
