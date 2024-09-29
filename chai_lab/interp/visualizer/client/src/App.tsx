@@ -31,15 +31,18 @@ type ServerResponse = ConnectionResponse | CommandResponse;
 
 const exampleCommand: VisualizationCommand = {
   feature_index: 999,
+  label: "ex",
   id: "default",
   proteins: [
     {
       pdb_id: "1a0m",
       activation: 0.5,
+      sequence: "GCCSDPRCNMNNPDYCX",
       residues: [1, 10],
     },
     {
       pdb_id: "101m",
+      sequence: "MVLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRVKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGNFGADAQGAMNKALELFRKDIAAKYKELGYQG",
       activation: 0.6,
       residues: [4, 40],
     },
