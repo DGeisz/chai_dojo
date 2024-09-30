@@ -1,8 +1,19 @@
+export interface ResidueVis {
+  index: number;
+  chain: number;
+  residue: string;
+}
+
+export interface ChainVis {
+  index: number;
+  sequence: string;
+}
+
 export interface ProteinToVisualize {
   pdb_id: string;
   activation: number;
-  sequence: string;
-  residues: [number, number];
+  chains: ChainVis[];
+  residues: [ResidueVis, ResidueVis];
 }
 
 export interface VisualizationItem {

@@ -13,16 +13,45 @@ const exampleCommand: VisualizationItem = {
     {
       pdb_id: "1a0m",
       activation: 0.5,
-      sequence: "GCCSDPRCNMNNPDYCX",
-      residues: [1, 10],
+      chains: [
+        {
+          index: 0,
+          sequence: "GCCSDPRCNMNNPDYCX",
+        },
+      ],
+
+      residues: [
+        {
+          index: 0,
+          chain: 0,
+          residue: "G",
+        },
+        {
+          index: 0,
+          chain: 10,
+          residue: "G",
+        },
+      ],
     },
-    {
-      pdb_id: "101m",
-      sequence:
-        "MVLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRVKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGNFGADAQGAMNKALELFRKDIAAKYKELGYQG",
-      activation: 0.6,
-      residues: [4, 40],
-    },
+    // {
+    //   pdb_id: "101m",
+    //
+    //   chains: [
+    //     {
+    //       index: 0,
+    //       sequence: "MVLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRVKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGNFGADAQGAMNKALELFRKDIAAKYKELGYQG",
+    //     }
+    //   ],
+    //
+    //   activation: 0.6,
+    //   residues: [
+    //     {
+    //       index: 4,
+    //       chain: 0,
+    //       residue: "S",
+    //     }
+    //   ]
+    // },
   ],
 };
 
