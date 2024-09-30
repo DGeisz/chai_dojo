@@ -8,6 +8,7 @@ from typing import List
 
 class ResidueVis(BaseModel):
     index: int
+    token_index: int
     chain: int
 
 

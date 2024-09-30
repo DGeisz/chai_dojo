@@ -44,10 +44,13 @@ def load_max_acts_from_s3():
 
 
 def token_index_to_residue(fasta: FastaPDB, token_index: int) -> ResidueVis:
+    og_token_i = token_index
+
     for i, chain in enumerate(fasta.chains):
         if token_index < chain.length:
             return ResidueVis(
                 index=token_index,
+                token_index=og_token_i,
                 chain=i,
             )
 
