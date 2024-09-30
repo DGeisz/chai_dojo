@@ -7,7 +7,6 @@ from typing import List
 class ResidueVis(BaseModel):
     index: int
     chain: int
-    residue: str
 
 
 class ChainVis(BaseModel):
