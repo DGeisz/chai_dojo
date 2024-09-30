@@ -4,11 +4,22 @@ from pydantic import BaseModel
 from typing import List
 
 
+class ResidueVis(BaseModel):
+    index: int
+    chain: int
+    residue: str
+
+
+class ChainVis(BaseModel):
+    index: int
+    sequence: str
+
+
 class ProteinToVisualize(BaseModel):
     pdb_id: str
     activation: float
-    sequence: str
-    residues: List[int]
+    chains: List[ChainVis]
+    residues: List[ResidueVis]
 
 
 class VisualizationCommand(BaseModel):

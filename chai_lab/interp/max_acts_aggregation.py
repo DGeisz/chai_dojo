@@ -10,12 +10,12 @@ from chai_lab.interp.config import OSAEConfig
 from chai_lab.interp.data_loader import DataLoader
 from chai_lab.interp.o_sae import OSae
 from chai_lab.interp.pdb_etl import FastaPDB
+from chai_lab.interp.pdb_utils import int_to_pdbid, pdbid_to_int
 from chai_lab.interp.quick_utils import SHORT_PROTEIN_FASTAS
 from chai_lab.interp.s3_utils import pair_s3_key, bucket_name
 from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.train import OSAETrainer
 from chai_lab.utils.memory import get_gpu_memory
-from notebooks.explore_max_acts import int_to_pdbid, pdbid_to_int
 
 torch.set_grad_enabled(False)
 
@@ -24,6 +24,8 @@ trained_sae = OSae(dtype=torch.bfloat16)
 trained_sae.load_model_from_aws(s3_client, f"osae_1EN3_to_4EN2_{32 * 2048}.pth")
 
 torch.set_default_device("cuda:0")
+
+global_data_loader = None
 
 
 def create_flat_coords(fasta: FastaPDB, k: int):
@@ -52,7 +54,12 @@ pdb_id_to_fasta = {fasta.pdb_id: fasta for fasta in SHORT_PROTEIN_FASTAS}
 
 
 def spot_check(
-    pdb_id: str | int, x: int, y: int, feature_id: int, osae: OSae, data_loader=None
+    pdb_id: str | int,
+    x: int,
+    y: int,
+    feature_id: int,
+    osae: OSae = trained_sae,
+    data_loader=None,
 ):
     if isinstance(pdb_id, int):
         pdb_id = int_to_pdbid(pdb_id)
@@ -60,8 +67,13 @@ def spot_check(
     if pdb_id not in pdb_id_to_fasta:
         raise ValueError("Invalid pdb_id")
 
+    global global_data_loader
+
     if data_loader is None:
-        data_loader = DataLoader(1, True, s3_client)
+        if global_data_loader is None:
+            global_data_loader = DataLoader(1, True, s3_client)
+
+        data_loader = global_data_loader
 
     mean = data_loader.mean
 

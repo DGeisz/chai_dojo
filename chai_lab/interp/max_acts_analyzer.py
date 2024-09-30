@@ -2,12 +2,15 @@ import torch
 import os
 
 from chai_lab.interp.data_loader import load_s3_object_with_progress
+from chai_lab.interp.pdb_etl import FastaChain, FastaPDB
 from chai_lab.interp.pdb_utils import int_to_pdbid
 from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.s3_utils import bucket_name, get_local_filename
 from chai_lab.interp.quick_utils import SHORT_PROTEINS_DICT
 from chai_lab.interp.visualizer.server.visualizer_controller import (
+    ChainVis,
     ProteinToVisualize,
+    ResidueVis,
     VisualizationCommand,
     VisualizerController,
 )
@@ -40,6 +43,18 @@ def load_max_acts_from_s3():
     return max_acts
 
 
+def token_index_to_residue(fasta: FastaPDB, token_index: int) -> ResidueVis:
+    for i, chain in enumerate(fasta.chains):
+        if token_index < chain.length:
+            return ResidueVis(
+                index=token_index, chain=i, residue=chain.sequence[token_index]
+            )
+
+        token_index -= chain.length
+
+    raise ValueError("Token index out of range")
+
+
 class MaxActsAnalyzer:
     def __init__(self, ngrok_url: str):
         self.max_acts_dict = load_max_acts_from_s3()
@@ -49,7 +64,7 @@ class MaxActsAnalyzer:
 
         self.visualizer_controller = VisualizerController(ngrok_url)
 
-    def __getitem__(self, key):
+    def get_index(self, key):
         values = self.values[key]
 
         right_padded = (values == -1).nonzero(as_tuple=True)[0]
@@ -64,7 +79,7 @@ class MaxActsAnalyzer:
         )
 
     def visualize_in_client(self, feature_id: int, start: int, end: int):
-        max_act_entries = self[feature_id][start:end]
+        max_act_entries = self.get_index(feature_id)[start:end]
 
         visualizer_entries = []
 
@@ -72,12 +87,23 @@ class MaxActsAnalyzer:
             x, y, pdb_index = coord
             pdb_id = int_to_pdbid(pdb_index)
 
+            fasta = SHORT_PROTEINS_DICT[pdb_id]
+
             visualizer_entries.append(
                 ProteinToVisualize(
                     pdb_id=pdb_id,
                     activation=value,
-                    residues=[x, y],
-                    sequence=SHORT_PROTEINS_DICT[pdb_id].chains[0].sequence,
+                    chains=[
+                        ChainVis(
+                            index=i,
+                            sequence=chain.sequence,
+                        )
+                        for i, chain in enumerate(fasta.chains)
+                    ],
+                    residues=[
+                        token_index_to_residue(fasta, x),
+                        token_index_to_residue(fasta, y),
+                    ],
                 )
             )
 
