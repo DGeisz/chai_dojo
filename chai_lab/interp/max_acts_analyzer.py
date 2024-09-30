@@ -49,7 +49,7 @@ def token_index_to_residue(fasta: FastaPDB, token_index: int) -> ResidueVis:
     for i, chain in enumerate(fasta.chains):
         if token_index < chain.length:
             return ResidueVis(
-                index=token_index,
+                seq_index=token_index,
                 token_index=og_token_i,
                 chain=i,
             )
