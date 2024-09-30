@@ -13,10 +13,16 @@ from chai_lab.interp.quick_utils import SHORT_PROTEINS_DICT
 max_acts = MaxActsAnalyzer('https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app')
 
 # %%
-max_acts.visualize_in_client(0, 0, 10)
+max_acts.visualize_in_client(10_000, 100, 200)
 
 # %%
-max_acts.get_index(0)[:10]
+max_acts.get_index(
+    10_000
+)
+
+# %%
+max_acts.values.mean(dim=-1).argmax()
+
 
 # %%
 
