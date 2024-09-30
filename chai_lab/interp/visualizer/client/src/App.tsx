@@ -24,34 +24,36 @@ const exampleCommand: VisualizationItem = {
         {
           index: 0,
           chain: 0,
-          residue: "G",
         },
         {
-          index: 0,
-          chain: 10,
-          residue: "G",
+          index: 10,
+          chain: 0,
         },
       ],
     },
-    // {
-    //   pdb_id: "101m",
-    //
-    //   chains: [
-    //     {
-    //       index: 0,
-    //       sequence: "MVLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRVKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGNFGADAQGAMNKALELFRKDIAAKYKELGYQG",
-    //     }
-    //   ],
-    //
-    //   activation: 0.6,
-    //   residues: [
-    //     {
-    //       index: 4,
-    //       chain: 0,
-    //       residue: "S",
-    //     }
-    //   ]
-    // },
+    {
+      pdb_id: "101m",
+
+      chains: [
+        {
+          index: 0,
+          sequence:
+            "MVLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRVKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGNFGADAQGAMNKALELFRKDIAAKYKELGYQG",
+        },
+      ],
+
+      activation: 0.6,
+      residues: [
+        {
+          index: 6,
+          chain: 0,
+        },
+        {
+          index: 14,
+          chain: 0,
+        },
+      ],
+    },
   ],
 };
 

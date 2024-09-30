@@ -24,7 +24,7 @@ interface DataRowProps {
 
 const DataRow: React.FC<DataRowProps> = (props) => {
   const {
-    protein: { pdb_id, sequence, residues, activation },
+    protein: { pdb_id, residues, activation, chains },
   } = props;
 
   const [start, end] = residues;
@@ -33,10 +33,14 @@ const DataRow: React.FC<DataRowProps> = (props) => {
     <tr>
       <td className={clsx(ROW_DATA_CLASSES)}>{pdb_id}</td>
       <td className={clsx(ROW_DATA_CLASSES)}>{activation}</td>
-      <td className={clsx(ROW_DATA_CLASSES)}>{start}</td>
-      <td className={clsx(ROW_DATA_CLASSES)}>{sequence[start]}</td>
-      <td className={clsx(ROW_DATA_CLASSES)}>{end}</td>
-      <td className={clsx(ROW_DATA_CLASSES)}>{sequence[end]}</td>
+      <td className={clsx(ROW_DATA_CLASSES)}>{start.index}</td>
+      <td className={clsx(ROW_DATA_CLASSES)}>
+        {chains[start.chain]?.sequence[start.index] || "Fuck you"}
+      </td>
+      <td className={clsx(ROW_DATA_CLASSES)}>{end.index}</td>
+      <td className={clsx(ROW_DATA_CLASSES)}>
+        {chains[end.chain]?.sequence[end.index] || "Fuck You"}
+      </td>
     </tr>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { VisualizationItem } from "../../types/basic_types.ts";
 import clsx from "clsx";
 import { ProteinViewer } from "../../building_blocks/protein_viewer.tsx";
@@ -60,7 +60,7 @@ export const ViewerPanel: React.FC<ViewerPanelProps> = (props) => {
             <ProteinViewer
               key={`${protein.pdb_id}-${protein.residues.join("-")}}`}
               pdbId={protein.pdb_id}
-              residueIds={protein.residues}
+              residueIds={protein.residues.map((r) => r.index)}
             />
           ))}
         </div>

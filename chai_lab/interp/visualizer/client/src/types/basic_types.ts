@@ -1,7 +1,6 @@
 export interface ResidueVis {
   index: number;
   chain: number;
-  residue: string;
 }
 
 export interface ChainVis {

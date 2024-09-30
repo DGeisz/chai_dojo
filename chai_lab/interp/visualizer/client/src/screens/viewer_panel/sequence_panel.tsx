@@ -1,10 +1,15 @@
 import React from "react";
 import clsx from "clsx";
-import { VisualizationItem } from "../../types/basic_types.ts";
+import { ChainVis, VisualizationItem } from "../../types/basic_types.ts";
+
+interface Residue {
+  index: number;
+  start: boolean;
+}
 
 interface SequenceViewerProps {
   sequence: string;
-  residues: [number, number];
+  residues: Residue[];
 }
 
 const START_COLOR = "bg-cyan-500";
@@ -13,21 +18,25 @@ const END_COLOR = "bg-red-500";
 const SequenceViewer: React.FC<SequenceViewerProps> = (props) => {
   const { sequence, residues } = props;
 
-  const [start, end] = residues;
-
   return (
     <span className={clsx("break-words whitespace-normal")}>
-      {sequence.split("").map((residue, index) => (
-        <span
-          className={clsx(
-            index === start && START_COLOR,
-            index === end && END_COLOR,
-            [end, start].includes(index) && ["text-white", "px-1 rounded-sm"],
-          )}
-        >
-          {residue}
-        </span>
-      ))}
+      {sequence.split("").map((residue, index) => {
+        const selectedResidue = residues.find((r) => r.index === index);
+
+        return (
+          <span
+            className={clsx(
+              selectedResidue && [
+                selectedResidue.start ? START_COLOR : END_COLOR,
+                "text-white",
+                "px-1 rounded-sm",
+              ],
+            )}
+          >
+            {residue}
+          </span>
+        );
+      })}
     </span>
   );
 };
@@ -56,25 +65,52 @@ export const SequencePanel: React.FC<SequencePanelProps> = (props) => {
         </div>
       </div>
 
-      {props.item.proteins.map((protein, index) => (
-        <div
-          className={clsx("mb-4 pb-2", "border-b border-neutral-200")}
-          key={`${protein.pdb_id}:${index}`}
-        >
-          <div className={clsx("font-semibold", "mb-1")}>
-            {protein.pdb_id}
-            {"  "}
-            <span className={clsx("text-neutral-500 text-sm", "font-medium")}>
-              {protein.residues.join(":")}
-            </span>
+      {props.item.proteins.map((protein, index) => {
+        const [start, end] = protein.residues;
+
+        const residuesForChain = (chain: ChainVis) => {
+          const residues: Residue[] = [];
+
+          if (start.chain === chain.index) {
+            residues.push({
+              index: start.index,
+              start: true,
+            });
+          }
+
+          if (end.chain === chain.index) {
+            residues.push({ index: end.index, start: false });
+          }
+
+          return residues;
+        };
+
+        return (
+          <div
+            className={clsx("mb-4 pb-2", "border-b border-neutral-200")}
+            key={`${protein.pdb_id}:${index}`}
+          >
+            <div className={clsx("font-semibold", "mb-1")}>
+              {protein.pdb_id}
+              {"  "}
+              {/*<span className={clsx("text-neutral-500 text-sm", "font-medium")}>*/}
+              {/*  {protein.residues.map().join(":")}*/}
+              {/*</span>*/}
+            </div>
+            {protein.chains.map((chain, index) => {
+              return (
+                <div className={clsx("mb-2")} key={`${chain.index}:${index}`}>
+                  <SequenceViewer
+                    key={`${protein.pdb_id}-${chain.index}`}
+                    sequence={chain.sequence}
+                    residues={residuesForChain(chain)}
+                  />
+                </div>
+              );
+            })}
           </div>
-          <SequenceViewer
-            key={`${protein.pdb_id}-${protein.residues.join("-")}}`}
-            sequence={protein.sequence}
-            residues={protein.residues}
-          />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
