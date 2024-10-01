@@ -76,9 +76,7 @@ def spot_check(
         data_loader = global_data_loader
 
     mean = data_loader.mean
-
     fasta = pdb_id_to_fasta[pdb_id]
-
     key = pair_s3_key(fasta.pdb_id)
 
     res = s3_client.get_object(Bucket=bucket_name, Key=key)
