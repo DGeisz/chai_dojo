@@ -33,6 +33,8 @@ MANIFEST
 wandb.sh
 
 wandb/
+pdb_files
+obsolete
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
