@@ -17,6 +17,7 @@ class OSAEOutputs(NamedTuple):
     fvu: Tensor
     feature_counts: Tensor
     aux_fvu: Tensor
+    out: Tensor
 
 
 class OSae(nn.Module):
@@ -215,7 +216,9 @@ class OSae(nn.Module):
         else:
             aux_fvu = torch.tensor(0.0, device=self.device)
 
-        return OSAEOutputs(fvu=fvu, feature_counts=feature_counts, aux_fvu=aux_fvu)
+        return OSAEOutputs(
+            fvu=fvu, feature_counts=feature_counts, aux_fvu=aux_fvu, out=out
+        )
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
