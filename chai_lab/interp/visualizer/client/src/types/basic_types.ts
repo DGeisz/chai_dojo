@@ -1,5 +1,6 @@
 export interface ResidueVis {
-  index: number;
+  seq_index: number;
+  token_index: number;
   chain: number;
 }
 

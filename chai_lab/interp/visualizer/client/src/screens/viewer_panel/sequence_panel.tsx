@@ -73,13 +73,13 @@ export const SequencePanel: React.FC<SequencePanelProps> = (props) => {
 
           if (start.chain === chain.index) {
             residues.push({
-              index: start.index,
+              index: start.seq_index,
               start: true,
             });
           }
 
           if (end.chain === chain.index) {
-            residues.push({ index: end.index, start: false });
+            residues.push({ index: end.seq_index, start: false });
           }
 
           return residues;
@@ -93,9 +93,9 @@ export const SequencePanel: React.FC<SequencePanelProps> = (props) => {
             <div className={clsx("font-semibold", "mb-1")}>
               {protein.pdb_id}
               {"  "}
-              {/*<span className={clsx("text-neutral-500 text-sm", "font-medium")}>*/}
-              {/*  {protein.residues.map().join(":")}*/}
-              {/*</span>*/}
+              <span className={clsx("text-neutral-500 text-sm", "font-medium")}>
+                {protein.residues.map((r) => r.token_index).join(":")}
+              </span>
             </div>
             {protein.chains.map((chain, index) => {
               return (

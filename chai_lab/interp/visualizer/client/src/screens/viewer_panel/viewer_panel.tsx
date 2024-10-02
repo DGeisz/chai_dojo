@@ -28,7 +28,8 @@ export const ViewerPanel: React.FC<ViewerPanelProps> = (props) => {
     <>
       <div className={clsx("ml-6")}>
         <div className={clsx("text-xl", "font-semibold", "text-neutral-700")}>
-          Feature: #{item.feature_index} {item.label}
+          Feature: #{item.feature_index}{" "}
+          <span className={clsx("text-neutral-400")}>{item.label}</span>
         </div>
         <div className={clsx("flex flex-row", "mt-3")}>
           {Object.values(ViewerPanelType).map((panel_type) => (
@@ -60,7 +61,7 @@ export const ViewerPanel: React.FC<ViewerPanelProps> = (props) => {
             <ProteinViewer
               key={`${protein.pdb_id}-${protein.residues.join("-")}}`}
               pdbId={protein.pdb_id}
-              residueIds={protein.residues.map((r) => r.index)}
+              residueIds={protein.residues.map((r) => r.token_index)}
             />
           ))}
         </div>

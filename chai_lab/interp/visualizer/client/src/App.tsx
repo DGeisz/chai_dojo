@@ -1,4 +1,3 @@
-import { ProteinViewer } from "./building_blocks/protein_viewer.tsx";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { v4 } from "uuid";
@@ -22,11 +21,13 @@ const exampleCommand: VisualizationItem = {
 
       residues: [
         {
-          index: 0,
+          seq_index: 0,
+          token_index: 0,
           chain: 0,
         },
         {
-          index: 10,
+          seq_index: 10,
+          token_index: 10,
           chain: 0,
         },
       ],
@@ -45,11 +46,13 @@ const exampleCommand: VisualizationItem = {
       activation: 0.6,
       residues: [
         {
-          index: 6,
+          seq_index: 6,
+          token_index: 6,
           chain: 0,
         },
         {
-          index: 14,
+          seq_index: 14,
+          token_index: 14,
           chain: 0,
         },
       ],
@@ -111,7 +114,8 @@ export const App = () => {
             )}
             onClick={() => setActiveTabId(tab.id || "default")}
           >
-            #{tab.feature_index} {tab.label}
+            #{tab.feature_index}{" "}
+            <span className={clsx("text-neutral-400")}>{tab.label}</span>
           </div>
         ))}
       </div>

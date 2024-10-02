@@ -33,13 +33,13 @@ const DataRow: React.FC<DataRowProps> = (props) => {
     <tr>
       <td className={clsx(ROW_DATA_CLASSES)}>{pdb_id}</td>
       <td className={clsx(ROW_DATA_CLASSES)}>{activation}</td>
-      <td className={clsx(ROW_DATA_CLASSES)}>{start.index}</td>
+      <td className={clsx(ROW_DATA_CLASSES)}>{start.token_index}</td>
       <td className={clsx(ROW_DATA_CLASSES)}>
-        {chains[start.chain]?.sequence[start.index] || "Fuck you"}
+        {chains[start.chain]?.sequence[start.seq_index] || "Fuck you"}
       </td>
-      <td className={clsx(ROW_DATA_CLASSES)}>{end.index}</td>
+      <td className={clsx(ROW_DATA_CLASSES)}>{end.token_index}</td>
       <td className={clsx(ROW_DATA_CLASSES)}>
-        {chains[end.chain]?.sequence[end.index] || "Fuck You"}
+        {chains[end.chain]?.sequence[end.seq_index] || "Fuck You"}
       </td>
     </tr>
   );
