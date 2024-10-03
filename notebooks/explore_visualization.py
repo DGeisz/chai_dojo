@@ -1,8 +1,10 @@
+
 # %%
 %load_ext autoreload
 %autoreload 2
 
 # %%
+
 from einops import rearrange, einsum
 import plotly.express as px
 import torch
@@ -17,6 +19,17 @@ from chai_lab.interp.visualizer.server.visualizer_controller import ProteinToVis
 from chai_lab.interp.quick_utils import SHORT_PROTEINS_DICT, SHORT_PROTEIN_FASTAS
 from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.s3_utils import bucket_name
+
+ngrok_url = "https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app"
+
+# %%
+analyzer = MaxActsAnalyzer(ngrok_url)
+
+# %%
+analyzer.plot_top_feature_at_location("1bbc", 46, 90, 9)
+
+
+
 
 
 # %%

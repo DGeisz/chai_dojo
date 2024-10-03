@@ -53,3 +53,7 @@ accelerate
 wandb~=0.18.1
 
 pydantic
+pandas
+plotly
+
+nbformat
