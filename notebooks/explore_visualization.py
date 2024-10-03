@@ -26,10 +26,13 @@ ngrok_url = "https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app"
 analyzer = MaxActsAnalyzer(ngrok_url)
 
 # %%
-analyzer.plot_top_feature_at_location("1bbc", 46, 90, 9)
+# 0 - Horizontal Embedding (Animo Acid)?
+# 1 - Horizontal Embedding (Positition)?
+# 2 - Top right corner
+# 3 - Vertical Embedding
+# 4 - Splatter
 
-
-
+analyzer.plot_top_feature_at_location("1bbc", 46, 90, 4)
 
 
 # %%

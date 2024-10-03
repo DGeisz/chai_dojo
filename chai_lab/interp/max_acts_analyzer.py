@@ -138,7 +138,9 @@ class MaxActsAnalyzer:
 
         return self.max_acts_indices_cache[pdb_id]
 
-    def plot_feature_inclusion(self, pdb_id: int | str, feature_id: int):
+    def plot_feature_inclusion(
+        self, pdb_id: int | str, feature_id: int, extra_title=""
+    ):
         pdb_id = self._clean_pdb_id(pdb_id)
         fasta = SHORT_PROTEINS_DICT[pdb_id]
 

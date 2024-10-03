@@ -13,6 +13,7 @@ from chai_lab.data.dataset.structure.all_atom_residue_tokenizer import (
 )
 from chai_lab.data.sources.rdkit import RefConformerGenerator
 from chai_lab.interp.context_builder import fasta_to_feature_context, gen_tokenizer
+from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.pdb_etl import get_pdb_fastas
 
 from chai_lab.utils.memory import get_gpu_memory, model_size_in_bytes
@@ -23,17 +24,6 @@ print("Started Updated Script!")
 
 # %%
 torch.set_grad_enabled(False)
-
-with open("creds.yaml", "r") as file:
-    creds = yaml.safe_load(file)
-
-
-s3 = boto3.client(
-    "s3",
-    aws_access_key_id=creds["access_key"],
-    aws_secret_access_key=creds["secret_key"],
-    region_name=creds["region"],
-)
 
 # %%
 
@@ -65,9 +55,40 @@ num_trunk_recycles = 3
 # %%
 
 # This is where we left off
-start = 7925
+# start = 7925
+start = 0
 
 start_time = time.time()
+
+all_acts = []
+file_count_index = 0
+pdbs_per_file = 512
+num_pdbs = len(fastas[start:])
+
+
+def save_acts(acts, file_count_index):
+    print("Saving for file count index:", file_count_index)
+
+    acts_to_save = torch.cat(acts, dim=0)
+    shuffled_acts = acts_to_save[torch.randperm(acts_to_save.size(0))]
+
+    normal_file_name = f"all_acts_v1_{num_pdbs}_{file_count_index}.pt2"
+    shuffled_acts_file_name = f"shuffled_acts_v1_{num_pdbs}_{file_count_index}.pt2"
+
+    prefix = "chai/aggregated_acts"
+
+    torch.save(acts_to_save, normal_file_name)
+    torch.save(shuffled_acts, shuffled_acts_file_name)
+
+    s3_client.upload_file(normal_file_name, bucket_name, f"{prefix}/{normal_file_name}")
+    s3_client.upload_file(
+        shuffled_acts_file_name, bucket_name, f"{prefix}/{shuffled_acts_file_name}"
+    )
+
+    # Remove temp files
+    os.remove(normal_file_name)
+    os.remove(shuffled_acts_file_name)
+
 
 for k, fasta in enumerate(fastas[start:]):
     i = k + start
@@ -158,7 +179,12 @@ for k, fasta in enumerate(fastas[start:]):
     n_t = f_context.structure_context.num_tokens
 
     persist_single = token_single_trunk_repr[0, :n_t]
-    persist_pairs = token_pair_initial_repr[0, :n_t, :n_t]
+    # persist_pairs = token_pair_initial_repr[0, :n_t, :n_t]
+    persist_pairs = token_pair_trunk_repr[0, :n_t, :n_t]
+
+    flat_pairs = rearrange(persist_pairs, "i j c -> (i j) c").cpu()
+
+    all_acts.append(flat_pairs)
 
     persist_dict_pair = {
         "pdb_id": fasta.pdb_id,
@@ -172,19 +198,27 @@ for k, fasta in enumerate(fastas[start:]):
         "n_tokens": n_t,
     }
 
-    pair_file_name = f"{fasta.pdb_id}_acts.pt2"
-    single_file_name = f"{fasta.pdb_id}_single_seq_acts.pt2"
+    pair_file_name = f"{fasta.pdb_id}_v1_acts.pt2"
+    single_file_name = f"{fasta.pdb_id}_v1_single_seq_acts.pt2"
 
     torch.save(persist_dict_pair, pair_file_name)
     torch.save(persist_dict_single, single_file_name)
 
-    s3.upload_file(pair_file_name, bucket_name, f"{pair_prefix}/{pair_file_name}")
-    s3.upload_file(
+    s3_client.upload_file(
+        pair_file_name, bucket_name, f"{pair_prefix}/{pair_file_name}"
+    )
+    s3_client.upload_file(
         single_file_name, bucket_name, f"{single_seq_prefix}/{single_file_name}"
     )
 
     # Delete the file
     os.remove(pair_file_name)
     os.remove(single_file_name)
+
+    if k % pdbs_per_file == 0 and k > 0:
+        save_acts(all_acts, file_count_index)
+
+        file_count_index += 1
+        all_acts = []
 
     print(f"Uploaded: {run_id} {time.time() - start_time}")
