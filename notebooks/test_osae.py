@@ -40,7 +40,8 @@ cfg = OSAEConfig(
     lr=1e-3,
     beta1=0.9,
     beta2=0.999,
-    aux_fraction=1/64,
+    # aux_fraction=1/64,
+    aux_fraction=0,
     subtract_mean=True,
 
     use_scheduler=True,
@@ -61,14 +62,15 @@ trainer = OSAETrainer(cfg, s3=s3_client)
 
 run = tracker.new_experiment(
     "osae-real-acts",
-    "The lower sneak attack worked, we're going to try to juice it to lr=2e-3",
+    "The lower sneak attack worked, we're going to try to juice it to lr=2e-3 (and with no aux loss)",
     config=asdict(cfg),
 )
 
 
 # %%
-
-trainer.train(9000, run)
+trainer.train(6000, run)
+trainer.osae.save_model_to_aws(s3_client, f"osae_v1_1EN3_2EN2_{32 * 2048}.pth")
+tracker.finish()
 
 
 
