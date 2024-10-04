@@ -46,7 +46,7 @@ cfg = OSAEConfig(
     use_scheduler=True,
     num_batches_before_increase=1000,
     increase_interval=500,
-    final_multiplier=10.,
+    final_multiplier=20.,
 
     use_decay=False,
     decay_rate=0.997,
@@ -61,7 +61,7 @@ trainer = OSAETrainer(cfg, s3=s3_client)
 
 run = tracker.new_experiment(
     "osae-real-acts",
-    "Fixed the dead neuron leap, we're doing anther sneak attack but to a lower final lr",
+    "The lower sneak attack worked, we're going to try to juice it to lr=2e-3",
     config=asdict(cfg),
 )
 
@@ -74,7 +74,13 @@ trainer.train(9000, run)
 
 
 # %%
-trainer.osae.save_model_to_aws(s3_client, f"osae_v1_1EN3_{32 * 2048}.pth")
+trainer.osae.save_model_to_aws(s3_client, f"osae_v1_1EN3_1EN2_{32 * 2048}.pth")
+
+# %%
+tracker.finish()
+
+
+
 
 # %%
 new_osae = OSae(cfg, dtype=torch.bfloat16)
