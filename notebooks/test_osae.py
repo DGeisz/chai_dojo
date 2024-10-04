@@ -19,12 +19,14 @@ from chai_lab.interp.s3 import s3_client
 
 
 # %%
+
 wandb.login()
 
 tracker = ExperimentTracker()
 
 
 # %%
+
 cfg = OSAEConfig(
     k=32,
     # num_latents=256 * 256,
@@ -40,10 +42,10 @@ cfg = OSAEConfig(
     aux_fraction=1/64,
     subtract_mean=True,
 
+    use_scheduler=False,
     num_batches_before_increase=1000,
     increase_interval=500,
     final_multiplier=40.,
-    use_scheduler=True,
 
     use_decay=False,
     decay_rate=0.997,
@@ -54,17 +56,22 @@ cfg = OSAEConfig(
 trainer = OSAETrainer(cfg, s3=s3_client)
 
 # %%
+
 # run = wandb.init(project="osae-investigation", config=asdict(cfg))
 
 run = tracker.new_experiment(
-    "osae-investigation",
-    "Sneaking up on a large lr, but with the right activations this time",
+    "osae-real-acts",
+    "We had a totally random explosion of dead neurons, no scheduler, see if this fixes it?",
     config=asdict(cfg),
 )
 
 
 # %%
+
 trainer.train(9000, run)
+
+
+
 
 # %%
 trainer.osae.save_model_to_aws(s3_client, f"osae_v1_1EN3_to_4EN2_{32 * 2048}.pth")
