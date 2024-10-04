@@ -39,18 +39,20 @@ cfg = OSAEConfig(
     lr=1e-3,
     beta1=0.9,
     beta2=0.999,
-    aux_fraction=1 / 32,
-    # aux_fraction=0,
+    # aux_fraction=1 / 32,
+    aux_fraction=0,
     subtract_mean=True,
     use_scheduler=True,
     num_batches_before_increase=1000,
-    increase_interval=500,
+    increase_interval=1000,
     final_multiplier=20.0,
     use_decay=False,
     decay_rate=0.997,
     final_rate=1e-3,
     # aux_fraction=None
 )
+
+print(asdict(cfg))
 
 trainer = OSAETrainer(cfg, s3=s3_client)
 
@@ -59,14 +61,14 @@ trainer = OSAETrainer(cfg, s3=s3_client)
 
 run = tracker.new_experiment(
     "osae-real-acts",
-    "Last experiment worked quite well, we're going to add aux loss",
+    "Aux loss fucked things up.  We're going to try a slower approach",
     config=asdict(cfg),
 )
 
 
 # %%
 trainer.train(6000, run)
-trainer.osae.save_model_to_aws(s3_client, f"osae_v1_1EN3_2EN2_aux_{32 * 2048}.pth")
+trainer.osae.save_model_to_aws(s3_client, f"osae_v1_1EN3_2EN2_slow_{32 * 2048}.pth")
 tracker.finish()
 
 
