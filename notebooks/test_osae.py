@@ -58,7 +58,7 @@ trainer = OSAETrainer(cfg, s3=s3_client)
 
 run = tracker.new_experiment(
     "osae-investigation",
-    "Seeing if we can sneak up on a really high learning rate after waiting for a bit",
+    "Sneaking up on a large lr, but with the right activations this time",
     config=asdict(cfg),
 )
 
@@ -67,7 +67,7 @@ run = tracker.new_experiment(
 trainer.train(9000, run)
 
 # %%
-trainer.osae.save_model_to_aws(s3_client, f"osae_1EN3_to_4EN2_{32 * 2048}.pth")
+trainer.osae.save_model_to_aws(s3_client, f"osae_v1_1EN3_to_4EN2_{32 * 2048}.pth")
 
 # %%
 new_osae = OSae(cfg, dtype=torch.bfloat16)

@@ -64,6 +64,8 @@ class DataLoader:
     def _load_super_batch(self, super_batch_index: int, chunk_size=1024 * 1024):
         key = super_batch_s3_key(super_batch_index)
 
+        print("Super Batch key:", key)
+
         print(f"Starting Super Batch: load: {super_batch_index}")
 
         local_cache_file = get_local_filename(super_batch_file_name(super_batch_index))

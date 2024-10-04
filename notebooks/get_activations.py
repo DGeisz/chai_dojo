@@ -15,17 +15,13 @@ from chai_lab.data.sources.rdkit import RefConformerGenerator
 from chai_lab.interp.context_builder import fasta_to_feature_context, gen_tokenizer
 from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.pdb_etl import get_pdb_fastas
-
 from chai_lab.utils.memory import get_gpu_memory, model_size_in_bytes
 from dataclasses import dataclass, fields, is_dataclass
 from copy import deepcopy
 
-print("Started Updated Script!")
+print("Started Updated Script! v2")
 
-# %%
 torch.set_grad_enabled(False)
-
-# %%
 
 
 bucket_name = "mech-interp"
@@ -94,7 +90,7 @@ for k, fasta in enumerate(fastas[start:]):
     i = k + start
 
     pdb_id = fasta.pdb_id
-    run_id = f"{pdb_id}_{i}"
+    run_id = f"{pdb_id}::{i}"
 
     f_context = fasta_to_feature_context(fasta, tokenizer=tokenizer, device=device)
     feature_contexts = [f_context]

@@ -26,7 +26,8 @@ def single_seq_filename(pdb_id: str):
 
 
 def super_batch_s3_key(index: int):
-    return f"{super_batch_folder}/shuffled_acts_7900_{index}.pt2"
+    # return f"{super_batch_folder}/shuffled_acts_7900_{index}.pt2"
+    return f"{super_batch_folder}/shuffled_acts_v1_48836_{index}.pt2"
 
 
 def get_local_filename(filename: str):
