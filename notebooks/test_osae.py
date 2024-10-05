@@ -14,7 +14,7 @@ from chai_lab.interp.config import OSAEConfig
 from chai_lab.interp.experiment_tracker import ExperimentTracker
 from chai_lab.interp.sae.o_sae import OSae
 from chai_lab.interp.train import OSAETrainer
-from chai_lab.interp.s3 import s3_client
+from chai_lab.interp.storage.s3 import s3_client
 
 from pprint import pprint
 
@@ -46,8 +46,8 @@ cfg = OSAEConfig(
     subtract_mean=True,
     use_scheduler=True,
     num_batches_before_increase=1000,
-    increase_interval=1500,
-    final_multiplier=30.0,
+    increase_interval=500,
+    final_multiplier=20.0,
     use_decay=False,
     decay_rate=0.997,
     final_rate=1e-3,
@@ -63,14 +63,14 @@ trainer = OSAETrainer(cfg, s3=s3_client)
 
 run = tracker.new_experiment(
     "osae-real-acts",
-    "We're going to veerrrry slowly sneak up to train_mult=30, see if that let's us get around the loss spike but still get to good good final lr",
+    "Alright, it seems that going up to x20 over 500 is the move.  I'm going to run that bitch for a long time",
     config=asdict(cfg),
 )
 
 
 # %%
-trainer.train(6000, run)
-trainer.osae.save_model_to_aws(s3_client, f"osae_v1_1EN3_3EN2_{32 * 2048}.pth")
+trainer.train(12_000, run)
+trainer.osae.save_model_to_aws(s3_client, f"osae_v1_1EN3_2EN2_{32 * 2048}_{12_000}.pth")
 tracker.finish()
 
 

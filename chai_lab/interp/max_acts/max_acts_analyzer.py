@@ -6,13 +6,17 @@ import plotly.express as px
 
 from typing import TypedDict
 
-from chai_lab.interp.data_loader import DataLoader, load_s3_object_with_progress
+from chai_lab.interp.data.data_loader import DataLoader, load_s3_object_with_progress
 from chai_lab.interp.sae.o_sae import OSae
 from chai_lab.interp.data.pdb_etl import FastaChain, FastaPDB
 from chai_lab.interp.data.pdb_utils import int_to_pdbid
-from chai_lab.interp.s3 import s3_client
-from chai_lab.interp.s3_utils import bucket_name, get_local_filename, pair_s3_key
-from chai_lab.interp.quick_utils import SHORT_PROTEINS_DICT
+from chai_lab.interp.storage.s3 import s3_client
+from chai_lab.interp.storage.s3_utils import (
+    bucket_name,
+    get_local_filename,
+    pair_s3_key,
+)
+from chai_lab.interp.data.short_proteins import SHORT_PROTEINS_DICT
 from chai_lab.interp.max_acts.max_acts_aggregation import trained_sae
 from chai_lab.interp.visualizer.server.visualizer_controller import (
     ChainVis,

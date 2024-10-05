@@ -10,15 +10,15 @@ import plotly.express as px
 import torch
 import io
 
-from chai_lab.interp.data_loader import DataLoader
+from chai_lab.interp.data.data_loader import DataLoader
 from chai_lab.interp.max_acts.max_acts_aggregation import spot_check, trained_sae
 from chai_lab.interp.max_acts.max_acts_analyzer import load_max_acts_from_s3, MaxActsAnalyzer
 from chai_lab.interp.data.pdb_utils import pdbid_to_int, int_to_pdbid
-from chai_lab.interp.s3_utils import pair_s3_key
+from chai_lab.interp.storage.s3_utils import pair_s3_key
 from chai_lab.interp.visualizer.server.visualizer_controller import ProteinToVisualize, VisualizationCommand, VisualizerController
-from chai_lab.interp.quick_utils import SHORT_PROTEINS_DICT, SHORT_PROTEIN_FASTAS
-from chai_lab.interp.s3 import s3_client
-from chai_lab.interp.s3_utils import bucket_name
+from chai_lab.interp.data.short_proteins import SHORT_PROTEINS_DICT, SHORT_PROTEIN_FASTAS
+from chai_lab.interp.storage.s3 import s3_client
+from chai_lab.interp.storage.s3_utils import bucket_name
 
 ngrok_url = "https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app"
 

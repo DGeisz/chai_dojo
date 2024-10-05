@@ -9,11 +9,11 @@ import torch
 from einops import rearrange
 
 from chai_lab.interp.config import OSAEConfig
-from chai_lab.interp.data_loader import DataLoader
+from chai_lab.interp.data.data_loader import DataLoader
 from chai_lab.interp.sae.o_sae import OSae
-from chai_lab.interp.quick_utils import SHORT_PROTEIN_FASTAS
-from chai_lab.interp.s3_utils import pair_s3_key, bucket_name
-from chai_lab.interp.s3 import  s3_client
+from chai_lab.interp.data.short_proteins import SHORT_PROTEIN_FASTAS
+from chai_lab.interp.storage.s3_utils import pair_s3_key, bucket_name
+from chai_lab.interp.storage.s3 import  s3_client
 from chai_lab.interp.train import OSAETrainer
 
 

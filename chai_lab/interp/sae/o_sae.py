@@ -9,8 +9,8 @@ from jaxtyping import Float, Int, Bool
 from huggingface_hub import PyTorchModelHubMixin
 
 from chai_lab.interp.config import OSAEConfig, EXAMPLE_CONFIG
-from chai_lab.interp.data_loader import DataLoader
-from chai_lab.interp.s3_utils import get_model_key, bucket_name
+from chai_lab.interp.data.data_loader import DataLoader
+from chai_lab.interp.storage.s3_utils import get_model_key, bucket_name
 
 
 class OSAEOutputs(NamedTuple):

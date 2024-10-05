@@ -6,7 +6,7 @@
 import yaml
 import boto3
 
-from chai_lab.interp.shuffle_loader import PairActivationShuffleLoader
+from chai_lab.interp.data.shuffle_loader import PairActivationShuffleLoader
 # %%
 with open("creds.yaml", "r") as file:
     creds = yaml.safe_load(file)

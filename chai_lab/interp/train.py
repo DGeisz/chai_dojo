@@ -7,7 +7,7 @@ from torch import optim
 import wandb.plot
 
 from chai_lab.interp.config import OSAEConfig, SAEConfig
-from chai_lab.interp.data_loader import DataLoader
+from chai_lab.interp.data.data_loader import DataLoader
 from chai_lab.interp.sae.k_sae import KSae
 from chai_lab.interp.sae.o_sae import OSae
 

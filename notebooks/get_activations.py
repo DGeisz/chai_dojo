@@ -13,7 +13,7 @@ from chai_lab.data.dataset.structure.all_atom_residue_tokenizer import (
 )
 from chai_lab.data.sources.rdkit import RefConformerGenerator
 from chai_lab.interp.data.context_builder import fasta_to_feature_context, gen_tokenizer
-from chai_lab.interp.s3 import s3_client
+from chai_lab.interp.storage.s3 import s3_client
 from chai_lab.interp.data.pdb_etl import get_pdb_fastas
 from chai_lab.utils.memory import get_gpu_memory, model_size_in_bytes
 from dataclasses import dataclass, fields, is_dataclass

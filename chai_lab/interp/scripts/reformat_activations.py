@@ -36,7 +36,7 @@ def single_seq_filename(pdb_id: str):
     return f"{pdb_id}_single_seq_acts.pt2"
 
 
-pdbs_path = os.path.expanduser("~/chai_dojo/chai_lab/interp/shuffled_pdbs.pkl")
+pdbs_path = os.path.expanduser("~/chai_dojo/chai_lab/interp/data/shuffled_pdbs.pkl")
 
 with open(pdbs_path, "rb") as f:
     shuffled_pdbs = pickle.load(f)

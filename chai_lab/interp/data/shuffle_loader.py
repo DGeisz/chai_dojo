@@ -4,7 +4,7 @@ import os
 import io
 import random
 
-from chai_lab.interp.s3_utils import (
+from chai_lab.interp.storage.s3_utils import (
     NUM_SUPER_BATCHES,
     pair_file_name,
     pair_s3_key,
@@ -15,7 +15,7 @@ from chai_lab.interp.s3_utils import (
 random.seed(42)
 
 from einops import rearrange
-from chai_lab.interp.quick_utils import (
+from chai_lab.interp.data.short_proteins import (
     AVAILABLE_PDB_IDS,
 )
 

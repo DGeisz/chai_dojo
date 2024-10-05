@@ -8,7 +8,7 @@
 import torch
 import matplotlib.pyplot as plt
 
-from chai_lab.interp.s3 import s3_client
+from chai_lab.interp.storage.s3 import s3_client
 from chai_lab.interp.config import SAEConfig
 from chai_lab.interp.train import SAETrainer
 

@@ -4,8 +4,8 @@ from chai_lab.interp.max_acts.max_acts_aggregation import (
     get_n_max_activations,
     trained_sae,
 )
-from chai_lab.interp.s3 import s3_client
-from chai_lab.interp.s3_utils import bucket_name
+from chai_lab.interp.storage.s3 import s3_client
+from chai_lab.interp.storage.s3_utils import bucket_name
 
 torch.set_grad_enabled(False)
 

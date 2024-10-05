@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 
 from torch import Tensor, nn
 
-from chai_lab.interp.data_loader import DataLoader
-from chai_lab.interp.decoder_utils import decoder_impl
+from chai_lab.interp.data.data_loader import DataLoader
+from chai_lab.interp.sae.decoder_utils import decoder_impl
 from chai_lab.interp.config import SAEConfig
 from dataclasses import dataclass
 

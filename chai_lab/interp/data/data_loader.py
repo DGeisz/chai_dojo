@@ -5,7 +5,7 @@ import random
 
 from tqdm import tqdm
 
-from chai_lab.interp.s3_utils import (
+from chai_lab.interp.storage.s3_utils import (
     NUM_SUPER_BATCHES,
     bucket_name,
     get_local_filename,
