@@ -1,6 +1,9 @@
 import torch
 
-from chai_lab.interp.max_acts_aggregation import get_n_max_activations, trained_sae
+from chai_lab.interp.max_acts.max_acts_aggregation import (
+    get_n_max_activations,
+    trained_sae,
+)
 from chai_lab.interp.s3 import s3_client
 from chai_lab.interp.s3_utils import bucket_name
 

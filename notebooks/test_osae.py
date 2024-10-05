@@ -12,7 +12,7 @@ from dataclasses import asdict
 
 from chai_lab.interp.config import OSAEConfig
 from chai_lab.interp.experiment_tracker import ExperimentTracker
-from chai_lab.interp.o_sae import OSae
+from chai_lab.interp.sae.o_sae import OSae
 from chai_lab.interp.train import OSAETrainer
 from chai_lab.interp.s3 import s3_client
 
@@ -46,7 +46,7 @@ cfg = OSAEConfig(
     subtract_mean=True,
     use_scheduler=True,
     num_batches_before_increase=1000,
-    increase_interval=500,
+    increase_interval=1500,
     final_multiplier=30.0,
     use_decay=False,
     decay_rate=0.997,
@@ -63,7 +63,7 @@ trainer = OSAETrainer(cfg, s3=s3_client)
 
 run = tracker.new_experiment(
     "osae-real-acts",
-    "We're going to sneak even higher (to final_mult=30), I think shit'll probably hit the fan",
+    "We're going to veerrrry slowly sneak up to train_mult=30, see if that let's us get around the loss spike but still get to good good final lr",
     config=asdict(cfg),
 )
 

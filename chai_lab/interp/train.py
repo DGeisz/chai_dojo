@@ -8,8 +8,8 @@ import wandb.plot
 
 from chai_lab.interp.config import OSAEConfig, SAEConfig
 from chai_lab.interp.data_loader import DataLoader
-from chai_lab.interp.k_sae import KSae
-from chai_lab.interp.o_sae import OSae
+from chai_lab.interp.sae.k_sae import KSae
+from chai_lab.interp.sae.o_sae import OSae
 
 
 class OSAETrainer:
