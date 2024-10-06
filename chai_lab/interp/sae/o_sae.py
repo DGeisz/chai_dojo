@@ -81,29 +81,6 @@ class OSae(nn.Module):
             * self.cfg.latents_per_group
         ).unsqueeze(0)
 
-    def init_from_data_loader(self, data_loader: DataLoader):
-        total_acts = 0
-        all_acts = []
-
-        while total_acts < self.cfg.num_latents:
-            acts = data_loader.next_batch()
-            total_acts += acts.shape[0]
-            all_acts.append(acts)
-
-        all_acts = torch.cat(all_acts, dim=0)[: self.cfg.num_latents]
-
-        eps = torch.finfo(all_acts.dtype).eps
-
-        # Normalize
-        all_acts /= all_acts.norm(dim=-1, keepdim=True) + eps
-
-        data = einops.rearrange(
-            all_acts, "(k d_group) d_model -> k d_group d_model", k=self.cfg.k
-        )
-
-        self.encoder.data = data
-        self.decoder.data = data.clone()
-
     def save_model_to_aws(self, s3, filename):
         model_key = get_model_key(filename)
 
@@ -225,10 +202,3 @@ class OSae(nn.Module):
         eps = torch.finfo(self.decoder.dtype).eps
         norm = torch.norm(self.decoder.data, dim=-1, keepdim=True)
         self.decoder.data /= norm + eps
-
-
-# %%
-import torch
-
-a = torch.Tensor([True, False, False, False, True, False])
-a.view(2, 3).bool().sum()
