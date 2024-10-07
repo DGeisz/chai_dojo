@@ -20,7 +20,7 @@ from chai_lab.interp.storage.s3_utils import pair_s3_key, bucket_name
 from chai_lab.interp.storage.s3 import s3_client
 
 
-def init_torch():
+def init_torch_for_max_acts():
     torch.set_grad_enabled(False)
     torch.set_default_device("cuda:0")
 
