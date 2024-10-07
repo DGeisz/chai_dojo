@@ -15,9 +15,10 @@ from chai_lab.interp.storage.s3_utils import (
     bucket_name,
     get_local_filename,
     pair_s3_key,
+    pair_v1_s3_key,
 )
 from chai_lab.interp.data.short_proteins import SHORT_PROTEINS_DICT
-from chai_lab.interp.max_acts.max_acts_aggregation import trained_sae
+from chai_lab.interp.sae.trained_saes import trunk_sae
 from chai_lab.interp.visualizer.server.visualizer_controller import (
     ChainVis,
     ProteinToVisualize,
@@ -31,7 +32,9 @@ main_n = 500
 main_start = 0
 main_end = 1000
 
-max_acts_file_name = f"max_acts_N{main_n}_A{main_end - main_start}.pt2"
+# max_acts_file_name = f"max_acts_N{main_n}_A{main_end - main_start}.pt2"
+
+max_acts_file_name = "max_acts_v1_N500_A1000.pt2"
 max_acts_s3_key = f"chai/max_acts/{max_acts_file_name}"
 
 local_max_acts_file_name = get_local_filename(max_acts_file_name)
@@ -78,7 +81,7 @@ def token_index_to_residue(fasta: FastaPDB, token_index: int) -> ResidueVis:
 
 
 class MaxActsAnalyzer:
-    def __init__(self, ngrok_url: str, osae: OSae = trained_sae):
+    def __init__(self, ngrok_url: str, osae: OSae = trunk_sae):
         self.max_acts_dict = load_max_acts_from_s3()
 
         self.values = self.max_acts_dict["values"]
@@ -117,7 +120,7 @@ class MaxActsAnalyzer:
         pdb_id = self._clean_pdb_id(pdb_id)
 
         if pdb_id not in self.acts_cache:
-            key = pair_s3_key(pdb_id)
+            key = pair_v1_s3_key(pdb_id)
 
             res = s3_client.get_object(Bucket=bucket_name, Key=key)
             acts = torch.load(io.BytesIO(res["Body"].read()))["pair_acts"]
@@ -134,7 +137,7 @@ class MaxActsAnalyzer:
 
         if pdb_id not in self.max_acts_indices_cache:
             flat_acts = self.get_pdb_id_acts(pdb_id)
-            sae_values, sae_indices = trained_sae.get_latent_acts_and_indices(
+            sae_values, sae_indices = trunk_sae.get_latent_acts_and_indices(
                 flat_acts, correct_indices=True
             )
 
@@ -156,7 +159,7 @@ class MaxActsAnalyzer:
             i=fasta.combined_length,
         )
         all_prot = [
-            f"{a}:{i}"
+            f"{a}:{i + 1}"
             for i, a in enumerate(
                 list("".join([chain.sequence.strip() for chain in fasta.chains]))
             )
@@ -182,7 +185,7 @@ class MaxActsAnalyzer:
         mat_vals = rearrange(vals, "(n m) -> n m", n=fasta.combined_length)
 
         all_prot = [
-            f"{a}:{i}"
+            f"{a}:{i + 1}"
             for i, a in enumerate(
                 list("".join([chain.sequence.strip() for chain in fasta.chains]))
             )

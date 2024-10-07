@@ -1,38 +1,91 @@
-
 # %%
 %load_ext autoreload
 %autoreload 2
 
 # %%
-
 from einops import rearrange, einsum
 import plotly.express as px
 import torch
 import io
 
 from chai_lab.interp.data.data_loader import DataLoader
-from chai_lab.interp.max_acts.max_acts_aggregation import spot_check, trained_sae
+from chai_lab.interp.max_acts.max_acts_aggregation import spot_check
 from chai_lab.interp.max_acts.max_acts_analyzer import load_max_acts_from_s3, MaxActsAnalyzer
 from chai_lab.interp.data.pdb_utils import pdbid_to_int, int_to_pdbid
-from chai_lab.interp.storage.s3_utils import pair_s3_key
+from chai_lab.interp.storage.s3_utils import pair_s3_key, pair_v1_s3_key
 from chai_lab.interp.visualizer.server.visualizer_controller import ProteinToVisualize, VisualizationCommand, VisualizerController
 from chai_lab.interp.data.short_proteins import SHORT_PROTEINS_DICT, SHORT_PROTEIN_FASTAS
 from chai_lab.interp.storage.s3 import s3_client
 from chai_lab.interp.storage.s3_utils import bucket_name
+from chai_lab.interp.sae.trained_saes import trunk_sae
 
 ngrok_url = "https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app"
+
+torch.set_grad_enabled(False)
+
 
 # %%
 analyzer = MaxActsAnalyzer(ngrok_url)
 
 # %%
+f = 170
+t = 0
+
+x, y, pdb_id = analyzer.coords[f, t].int().tolist()
+
+print(analyzer.values[f, t].item())
+
+spot_check(pdb_id, x, y, f, trunk_sae)
+
+# %%
+
+
+analyzer.coords[f, :10], analyzer.values[f, :10]
+
+# %%
+SHORT_PROTEIN_FASTAS[].pdb_id
+
+
+
+
+# %%
+## These are OLD!  For the ESM embeddings, not the Trunk Activations!
 # 0 - Horizontal Embedding (Animo Acid)?
 # 1 - Horizontal Embedding (Positition)?
 # 2 - Top right corner
 # 3 - Vertical Embedding
 # 4 - Splatter
 
-analyzer.plot_top_feature_at_location("1bbc", 46, 90, 4)
+
+# New features!
+# Feature 61510 -- Alpha Helix Feature! ("1bbc", 90, 91, 4)
+
+# analyzer.plot_top_feature_at_location("1bbc", 46, 90, 7)
+analyzer.plot_top_feature_at_location("1bbc", 90, 91, 4)
+
+
+# %%
+pdb_id = "1e9e"
+
+analyzer.plot_feature_vals(pdb_id, 61510)
+analyzer.plot_feature_inclusion(pdb_id, 61510)
+
+
+# %%
+
+# %%
+analyzer.visualize_in_client(61510, 0, 100)
+
+
+# %%
+c = analyzer.coords
+v = analyzer.values
+
+# %%
+c[2, :20]
+
+
+
 
 
 # %%
@@ -51,24 +104,30 @@ def imshow(tensor, **kwargs):
     ).show()
 
 
-data_loader = DataLoader(1, True, s3_client)
+data_loader = analyzer.data_loader
 
 
 # %%
+
 # pdb_id = "1a7f"
 # pdb_id = "1a0m"
 pdb_id = "1bbc"
 # pdb_id = "1bdo"
 # pdb_id = "1a7w"
 
+
 mean = data_loader.mean
 fasta = SHORT_PROTEINS_DICT[pdb_id]
-key = pair_s3_key(fasta.pdb_id)
+key = pair_v1_s3_key(fasta.pdb_id)
 
 res = s3_client.get_object(Bucket=bucket_name, Key=key)
 acts = torch.load(io.BytesIO(res["Body"].read()))["pair_acts"]
 flat_acts = rearrange(acts, "i j d -> (i j) d") - mean.cuda()
 sq_acts = rearrange(flat_acts, "(n m) k -> n m k", n=fasta.combined_length)
+# sq_acts = acts
+
+
+trained_sae = trunk_sae
 
 # %%
 sae_values, sae_indices = trained_sae.get_latent_acts_and_indices(
@@ -76,19 +135,34 @@ sae_values, sae_indices = trained_sae.get_latent_acts_and_indices(
 )
 
 # %%
+trained_sae(flat_acts).fvu
+
+# %%
+
+
+
+
+
+
+
+
+# %%
 sae_pred = trained_sae(flat_acts).out
 
 # %%
+
 sq_pred =  rearrange(sae_pred, "(n m) k -> n m k", n=fasta.combined_length)
 
 
 
 
 # %%
+
 sq_vals = rearrange(sae_values, "(n m) k -> n m k", n=fasta.combined_length)
 sq_ind = rearrange(sae_indices, "(n m) k -> n m k", n=fasta.combined_length)
 
 # %%
+
 sq_vals.shape
 
 # start = 46
@@ -98,7 +172,7 @@ end = 46
 start = 90
 
 # %%
-px.line(sq_acts[start, end].float().detach().cpu().numpy()).show()
+px.line(acts[start, end + 2].float().detach().cpu().numpy()).show()
 
 # %%
 import matplotlib.pyplot as plt
@@ -114,14 +188,29 @@ def plot_cool(i, vals, indices, osae):
     acts = rearrange(osae.decoder.data, "k d_group d_model -> (k d_group) d_model")
     return acts[indices[i]] * vals[i]
 
-# plt.plot(sq_pred[start, end].float().detach().cpu().numpy())
-# plt.plot(sq_acts[start, end].float().detach().cpu().numpy())
-# plt.plot(sq_acts[start, end].float().detach().cpu().numpy())
+pred = sq_pred[start, end]
+actual = sq_acts[start, end]
 
-plt.plot(sq_acts[38, 80].float().detach().cpu().numpy())
-plt.plot(sq_acts[28, 100].float().detach().cpu().numpy())
+plt.plot(pred.float().cpu().numpy(), label="pred")
+plt.plot(actual.float().cpu().numpy(), label="actual")
+plt.legend()
 
 plt.show()
+
+plt.plot((sq_pred[start, end] - sq_acts[start, end]).float().cpu().numpy(), label="pred")
+# plt.plot(sq_acts[start, end].float().cpu().numpy(), label="actual")
+
+plt.show()
+
+# plt.plot(sq_acts[start, end].float().detach().cpu().numpy())
+
+# plt.plot(sq_acts[38, 80].float().detach().cpu().numpy())
+# plt.plot(sq_acts[28, 100].float().detach().cpu().numpy())
+
+# %%
+pred.norm().item(), actual.norm().item(), (pred - actual).norm().item()
+
+
 
 # %%
 plt.plot(sq_acts[start, end].float().detach().cpu().numpy())
@@ -317,6 +406,17 @@ def plot_pdb_distance_matrix(pdb_id):
 d_mat = plot_pdb_distance_matrix(pdb_id)
 
 # %%
+def plot_d_mat(pdb_id):
+    d_mat = plot_pdb_distance_matrix(pdb_id)
+
+    imshow_np(d_mat.max() - d_mat)
+
+# %%
+plot_d_mat("1ane")
+    
+
+
+# %%
 def imshow_np(array, **kwargs):
     px.imshow(
         array,
@@ -325,7 +425,20 @@ def imshow_np(array, **kwargs):
         **kwargs,
     ).show()
 
+
+# %%
+nrm = acts.norm(dim=-1)
+n2 = (sq_acts + mean.cuda()).norm(dim=-1)
+m3 = (sq_pred + mean.cuda()).norm(dim=-1)
+
+max_v = 800
+
+
+
 imshow_np(d_mat.max() - d_mat)
+imshow((n2 - n2.min()).float().clip(0, max_v))
+imshow((m3 - m3.min()).float().clip(0, max_v))
+
 
 # %%
 n_acts = acts - mean.cuda()
@@ -333,6 +446,8 @@ n_acts = n_acts.norm(dim=-1)
 # n_acts -= n_acts.mean()
 
 imshow(n_acts.float())
+
+
 
 
 

@@ -52,7 +52,7 @@ def spot_check(
 
     mean = data_loader.mean
     fasta = SHORT_PROTEINS_DICT[pdb_id]
-    key = pair_s3_key(fasta.pdb_id)
+    key = pair_v1_s3_key(fasta.pdb_id)
 
     res = s3_client.get_object(Bucket=bucket_name, Key=key)
     acts = torch.load(io.BytesIO(res["Body"].read()))["pair_acts"]
