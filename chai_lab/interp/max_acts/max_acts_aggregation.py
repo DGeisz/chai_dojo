@@ -15,8 +15,9 @@ from chai_lab.interp.data.short_proteins import (
     SHORT_PROTEIN_FASTAS,
     SHORT_PROTEINS_DICT,
 )
-from chai_lab.interp.storage.s3_utils import pair_s3_key, bucket_name
+from chai_lab.interp.storage.s3_utils import pair_s3_key, bucket_name, pair_v1_s3_key
 from chai_lab.interp.storage.s3 import s3_client
+from chai_lab.utils.memory import get_gpu_memory
 
 
 def init_torch_for_max_acts():
@@ -139,7 +140,7 @@ def group_and_sort_activations(
 def group_and_sort_activations_for_fasta(
     fasta: FastaPDB, osae: OSae, mean: Float[Tensor, "d_model"]
 ):
-    key = pair_s3_key(fasta.pdb_id)
+    key = pair_v1_s3_key(fasta.pdb_id)
 
     print(f"Loading {key}")
     res = s3_client.get_object(Bucket=bucket_name, Key=key)
@@ -202,6 +203,7 @@ def print_iteration_info(i, start, value_aggregator, coord_aggregator):
         "Memory: ",
         get_tensor_memory(value_aggregator),
         get_tensor_memory(coord_aggregator),
+        get_gpu_memory(),
     )
 
 

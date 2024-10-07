@@ -17,8 +17,16 @@ def pair_file_name(pdb_id: str):
     return f"{pdb_id}_acts.pt2"
 
 
+def pair_v1_file_name(pdb_id: str):
+    return f"{pdb_id}_v1_acts.pt2"
+
+
 def pair_s3_key(pdb_id: str):
     return f"{pair_prefix}/{pair_file_name(pdb_id)}"
+
+
+def pair_v1_s3_key(pdb_id: str):
+    return f"{pair_prefix}/{pair_v1_file_name(pdb_id)}"
 
 
 def single_seq_filename(pdb_id: str):
