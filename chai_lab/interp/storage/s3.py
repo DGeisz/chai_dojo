@@ -2,7 +2,7 @@ import yaml
 import boto3
 import os
 
-creds_path = os.path.expanduser("~/chai_dojo/notebooks/creds.yaml")
+creds_path = os.path.expanduser("/tmp/chai/creds.yaml")
 
 with open(creds_path, "r") as file:
     creds = yaml.safe_load(file)

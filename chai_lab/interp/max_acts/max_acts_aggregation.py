@@ -1,6 +1,5 @@
 import io
 import torch
-import os
 
 from einops import rearrange
 from tqdm import tqdm
@@ -185,7 +184,6 @@ def update_aggregators(
         num_values_to_add = min([n, values.size(0)])
 
         value_aggregator[bucket, n : n + num_values_to_add] = values[:num_values_to_add]
-
         coord_aggregator[bucket, n : n + num_values_to_add] = coords[:num_values_to_add]
 
     value_aggregator, sort_indices = value_aggregator.sort(dim=-1, descending=True)
@@ -207,17 +205,24 @@ def print_iteration_info(i, start, value_aggregator, coord_aggregator):
     )
 
 
+def init_aggregators(num_latents: int, n: int):
+    value_aggregator = -1 * torch.ones((num_latents, 2 * n)).float()
+    coord_aggregator = -1 * torch.ones((num_latents, 2 * n, 3)).int()
+
+    return value_aggregator, coord_aggregator
+
+
 def get_n_max_activations(
     osae: OSae, n: int, start_index: int, amount: int, data_loader=None
 ):
     num_latents = osae.cfg.num_latents
 
-    value_aggregator = -1 * torch.ones((num_latents, 2 * n)).float()
-    coord_aggregator = -1 * torch.ones((num_latents, 2 * n, 3)).int()
+    value_aggregator, coord_aggregator = init_aggregators(num_latents, n)
 
     if data_loader is None:
         data_loader = DataLoader(1, True, s3_client)
 
+    mean = data_loader.mean.cuda()
     start = time()
 
     for i in range(start_index, start_index + amount):
@@ -226,7 +231,7 @@ def get_n_max_activations(
         fasta = SHORT_PROTEIN_FASTAS[i]
 
         unique_buckets, value_buckets, coord_buckets = (
-            group_and_sort_activations_for_fasta(fasta, osae, data_loader.mean.cuda())
+            group_and_sort_activations_for_fasta(fasta, osae, mean)
         )
 
         value_aggregator, coord_aggregator = update_aggregators(

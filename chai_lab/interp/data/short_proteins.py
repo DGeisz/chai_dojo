@@ -10,6 +10,10 @@ if os.path.exists(cache_file):
         SHORT_PROTEIN_FASTAS = pickle.load(f)
 else:
     SHORT_PROTEIN_FASTAS = get_pdb_fastas(only_protein=True, max_combined_len=255)
+
+    # Create cache file
+    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+
     with open(cache_file, "wb") as f:
         pickle.dump(SHORT_PROTEIN_FASTAS, f)
 
