@@ -1,7 +1,10 @@
+import io
 import torch
 
 from functools import partial
 from dataclasses import dataclass
+from einops import rearrange
+from tqdm import trange
 
 from chai_lab.interp.max_acts.max_acts_aggregation import (
     create_flat_coords,
@@ -9,6 +12,14 @@ from chai_lab.interp.max_acts.max_acts_aggregation import (
     init_aggregators,
     update_aggregators,
 )
+from chai_lab.interp.data.data_loader import DataLoader
+from chai_lab.interp.data.pdb_utils import pdbid_to_int
+from chai_lab.interp.data.short_proteins import (
+    SHORT_PROTEIN_FASTAS,
+)
+from chai_lab.interp.storage.s3_utils import bucket_name, pair_v1_s3_key
+from chai_lab.interp.storage.s3 import s3_client
+from chai_lab.interp.sae.trained_saes import trunk_sae
 
 
 def flat_index_full(x, y, k_i, N, k):
@@ -184,3 +195,43 @@ def test_update_aggregators():
 
             assert c.value == value_aggregator_i[i].item()
             assert c.to_coord_tuple() == tuple(coord_aggregator_i[i].tolist())
+
+
+def test_sorting_on_actual_acts():
+    fasta = SHORT_PROTEIN_FASTAS[0]
+
+    data_loader = DataLoader(1, True, s3_client)
+    mean = data_loader.mean.cuda()
+
+    key = pair_v1_s3_key(fasta.pdb_id)
+
+    res = s3_client.get_object(Bucket=bucket_name, Key=key)
+    acts = torch.load(io.BytesIO(res["Body"].read()))["pair_acts"]
+
+    flat_acts = rearrange(acts, "i j d -> (i j) d") - mean
+
+    sae_values, sae_indices = trunk_sae.get_latent_acts_and_indices(
+        flat_acts, correct_indices=True
+    )
+
+    flat_act_values = rearrange(sae_values, "i j -> (i j)")
+    flat_act_indices = rearrange(sae_indices, "i j -> (i j)")
+
+    flat_coords = create_flat_coords(
+        fasta.combined_length, trunk_sae.cfg.k, pdbid_to_int(fasta.pdb_id)
+    )
+
+    unique_buckets, value_buckets, _ = group_and_sort_activations(
+        flat_act_values, flat_act_indices, flat_coords
+    )
+
+    for i in trange(len(unique_buckets)):
+        index = unique_buckets[i]
+        values = value_buckets[i]
+
+        assert torch.equal(
+            flat_act_values[torch.nonzero((flat_act_indices == index).int()).flatten()]
+            .sort(descending=True)
+            .values,
+            values,
+        )

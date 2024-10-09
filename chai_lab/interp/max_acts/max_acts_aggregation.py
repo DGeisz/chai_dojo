@@ -100,15 +100,14 @@ def group_and_sort_activations(
     flat_act_indices: Int[Tensor, "flat_batch"],
     flat_coords: Int[Tensor, "flat_batch d"],
 ):
-    multiplier = (torch.ceil(flat_act_values.abs().max() / 100) + 1) * 100
+    value_sort_indices = flat_act_values.argsort(descending=True)
+    indices_sorted_by_value = flat_act_indices[value_sort_indices]
 
-    flat_sorter = multiplier * flat_act_indices - flat_act_values
+    index_sorted_indices = indices_sorted_by_value.argsort(stable=True)
 
-    sorted_indices = flat_sorter.sort().indices
-
-    sorted_act_values = flat_act_values[sorted_indices]
-    sorted_act_indices = flat_act_indices[sorted_indices]
-    sorted_coords = flat_coords[sorted_indices]
+    sorted_act_values = flat_act_values[value_sort_indices][index_sorted_indices]
+    sorted_act_indices = flat_act_indices[value_sort_indices][index_sorted_indices]
+    sorted_coords = flat_coords[value_sort_indices][index_sorted_indices]
 
     unique_buckets, inverse_indices = torch.unique(
         sorted_act_indices, return_inverse=True, return_counts=False
