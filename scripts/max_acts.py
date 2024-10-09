@@ -24,7 +24,7 @@ value_agg, coord_agg = get_n_max_activations(
 
 max_act_dict = {"values": value_agg, "coords": coord_agg}
 
-file_name = f"max_acts_v1_N{n}_A{end_index - start_index}.pt2"
+file_name = f"max_acts_v1_fixed_N{n}_A{end_index - start_index}.pt2"
 
 torch.save(max_act_dict, file_name)
 
