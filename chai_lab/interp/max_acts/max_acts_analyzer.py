@@ -180,6 +180,10 @@ class MaxActsAnalyzer:
 
         return pdb_id
 
+    @property
+    def _mean(self):
+        return self.data_loader.mean.cuda()
+
     def get_pdb_id_acts(self, pdb_id: int | str):
         pdb_id = self._clean_pdb_id(pdb_id)
 
@@ -188,13 +192,35 @@ class MaxActsAnalyzer:
 
             res = s3_client.get_object(Bucket=bucket_name, Key=key)
             acts = torch.load(io.BytesIO(res["Body"].read()))["pair_acts"]
-            flat_acts = (
-                rearrange(acts, "i j d -> (i j) d") - self.data_loader.mean.cuda()
-            )
+            flat_acts = rearrange(acts, "i j d -> (i j) d") - self._mean
 
             self.acts_cache[pdb_id] = flat_acts
 
         return self.acts_cache[pdb_id]
+
+    def plot_acts_norm_for_pdb(self, pdb_id: int | str, clip_max=None):
+        pdb_id = self._clean_pdb_id(pdb_id)
+
+        fasta = SHORT_PROTEINS_DICT[pdb_id]
+
+        acts = self.get_pdb_id_acts(pdb_id) + self._mean
+        sq_acts = rearrange(acts, "(n m) k -> n m k", n=fasta.combined_length)
+
+        acts_norm = torch.norm(sq_acts, dim=-1)
+
+        labels = self.chain_labels(fasta)
+
+        if clip_max is not None:
+            imshow(
+                (acts_norm - acts_norm.min()).float().clip(0, clip_max),
+                x=labels,
+                y=labels,
+                title=f"Acts Norm for {pdb_id} (Clipped)",
+            )
+        else:
+            imshow(
+                acts_norm.float(), x=labels, y=labels, title=f"Acts Norm for {pdb_id}"
+            )
 
     def get_max_acts_indices_for_pdb_id(self, pdb_id: int | str):
         pdb_id = self._clean_pdb_id(pdb_id)
@@ -232,7 +258,8 @@ class MaxActsAnalyzer:
             d_mat,
             x=labels,
             y=labels,
-            title=f"Pairwise Distance Matrix for {pdb_id}",
+            title=f"Pairwise Distance Matrix for {pdb_id}"
+            + (" (Inverted)" if inverted else ""),
         )
 
     def plot_feature_inclusion(
@@ -338,7 +365,7 @@ class MaxActsAnalyzer:
         if plot_values:
             self.plot_feature_vals(pdb_id, top_i_ind)
 
-    def visualize_max_acts(self, feature_id: int, start: int, end: int):
+    def plot_max_acts_table(self, feature_id: int, start: int, end: int):
         max_act_entries = self.get_index(feature_id)[start:end]
 
         table = Table(
@@ -370,7 +397,10 @@ class MaxActsAnalyzer:
             x_res = fasta.chains[x_vis.chain].sequence[x_vis.seq_index]
             y_res = fasta.chains[y_vis.chain].sequence[y_vis.seq_index]
 
-            table.add_row(str(rank), pdb_id, str(value), str(x), str(y), x_res, y_res)
+            # Need to add "1" to coords bc pdbs are 1-indexed
+            table.add_row(
+                str(rank), pdb_id, str(value), str(x + 1), str(y + 1), x_res, y_res
+            )
 
         rprint(table)
 

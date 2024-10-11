@@ -32,7 +32,7 @@ torch.set_grad_enabled(False)
 analyzer = MaxActsAnalyzer(ngrok_url)
 
 # %%
-analyzer.visualize_max_acts(47049, 0, 40)
+analyzer.plot_max_acts_table(47049, 0, 40)
 
 
 
@@ -88,7 +88,7 @@ analyzer.plot_feature_inclusion(pdb_id, feature)
 
 
 # %%
-analyzer.visualize_max_acts(18180, 0, 100)
+analyzer.plot_max_acts_table(18180, 0, 100)
 
 
 # %%
