@@ -3,10 +3,15 @@
 %autoreload 2
 
 # %%
-from einops import rearrange, einsum
+import matplotlib.pyplot as plt
 import plotly.express as px
+import numpy as np
 import torch
 import io
+
+from Bio.PDB.PDBList import PDBList
+from Bio.PDB.PDBParser import PDBParser
+from einops import rearrange, einsum
 
 from chai_lab.interp.data.data_loader import DataLoader
 from chai_lab.interp.max_acts.max_acts_aggregation import spot_check
@@ -24,118 +29,10 @@ ngrok_url = "https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app"
 torch.set_grad_enabled(False)
 
 # %%
-"1aom" in SHORT_PROTEINS_DICT
-
-
-# %%
-[fasta.pdb_id for fasta in SHORT_PROTEIN_FASTAS].index("1a2j")
-
-
-# %%
-def download_pdb(pdb_id, save_dir="pdb_files"):
-    pdbl = PDBList()
-    pdbl.retrieve_pdb_file(pdb_id, pdir=save_dir, file_format="pdb")
-    return f"{save_dir}/pdb{pdb_id.lower()}.ent"
-
-def get_alpha_carbons(structure):
-    ca_atoms = []
-    for model in structure:
-        for chain in model:
-            for residue in chain:
-                if "CA" in residue:  # CA is the alpha carbon atom
-                    ca_atoms.append(residue["CA"].coord)
-    return np.array(ca_atoms)
-
-def compute_distance_matrix(coords):
-    num_atoms = coords.shape[0]
-    distance_matrix = np.zeros((num_atoms, num_atoms))
-    for i in range(num_atoms):
-        for j in range(i, num_atoms):
-            distance = np.linalg.norm(coords[i] - coords[j])
-            distance_matrix[i, j] = distance
-            distance_matrix[j, i] = distance
-    return distance_matrix
-
-def plot_distance_matrix(distance_matrix):
-    plt.imshow(distance_matrix, cmap='viridis')
-    plt.colorbar(label="Distance (Å)")
-    plt.title("Amino Acid Distance Matrix")
-    plt.xlabel("Residue Index")
-    plt.ylabel("Residue Index")
-    plt.show()
-
-# Main function to generate the distance matrix plot
-def plot_pdb_distance_matrix(pdb_id):
-    # Step 1: Download the PDB file
-    pdb_file = download_pdb(pdb_id)
-    
-    # Step 2: Parse the PDB file to get the structure
-    parser = PDBParser(QUIET=True)
-    structure = parser.get_structure(pdb_id, pdb_file)
-    
-    # Step 3: Get the alpha carbon coordinates
-    ca_coords = get_alpha_carbons(structure)
-    
-    # Step 4: Compute the distance matrix
-    distance_matrix = compute_distance_matrix(ca_coords)
-
-    return distance_matrix
-    
-    # # Step 5: Plot the distance matrix
-    # plot_distance_matrix(distance_matrix)
-
-def imshow_np(array, **kwargs):
-    px.imshow(
-        array,
-        color_continuous_midpoint=0.0,
-        color_continuous_scale="RdBu",
-        **kwargs,
-    ).show()
-
-
-# %%
-# nrm = acts.norm(dim=-1)
-# n2 = (sq_acts + mean.cuda()).norm(dim=-1)
-# m3 = (sq_pred + mean.cuda()).norm(dim=-1)
-
-# max_v = 800
-
-
-
-
-
-# Example usage
-
-
-
-# %%
 analyzer = MaxActsAnalyzer(ngrok_url)
 
 # %%
-f = 170
-t = 0
-
-x, y, pdb_id = analyzer.coords[f, t].int().tolist()
-
-print(analyzer.values[f, t].item())
-
-spot_check(pdb_id, x, y, f, trunk_sae)
-
-# %%
-# pdb_id = "1bbc"
-pdb_id = "1a2j"
-
-
-# %%
-d_mat = plot_pdb_distance_matrix(pdb_id)
-imshow_np(d_mat.max() - d_mat)
-
-
-# %%
-analyzer.coords[f, :10], analyzer.values[f, :10]
-
-# %%
-# SHORT_PROTEIN_FASTAS[].pdb_id
+analyzer.visualize_max_acts(47049, 0, 40)
 
 
 
@@ -153,42 +50,45 @@ analyzer.coords[f, :10], analyzer.values[f, :10]
 # Feature 61510 -- Alpha Helix Feature! ("1bbc", 90, 91, 4)
 
 # Feature 32543 -- Disulfide Bond Feature! ("11ba", 25, 83, 0)
+# Feature 18180 -- Cis Peptide Bond Feature! ("1a5q", 112, 113, 4)
 
 # Feature 47049 -- Tracking certain forces, not others? (Maybe certain type of force?) ("1bbc", 35, 78, 8)
 # Feature 26900 -- Excluding close resides right next to each other, but also excluding far pairs? ("1bbc", 32, 48, 0)
 
+# Feature 4446 -- Beta sheet feature? (Kinda? Maybe?) ("11ba", 61, 62, 5)
+
 # analyzer.plot_top_feature_at_location("1bbc", 46, 90, 7)
-imshow_np(d_mat.max() - d_mat)
+
+pdb_id = "11ba"
+
+# pdb_id = "1a5q"
+# pdb_id = "1bbc"
+
+x = 62
+y = 61
 
 
-# x = 90
-# y = 91
-
-# x = 35
-# y = 78
-
-i = 1
-
-x = 29
-y = 32
+i = 0
 
 
 analyzer.plot_top_feature_at_location(pdb_id, x, y, i, plot_inclusion=True)
 
 
 # %%
-pdb_id = "1a2j"
+# pdb_id = "1a2j"
+pdb_id = "11ba"
+# pdb_id = "1bds"
 
-feature = 32543
+# feature = 4446
+# feature = 10150
+feature = 18180
 
 analyzer.plot_feature_vals(pdb_id, feature)
 analyzer.plot_feature_inclusion(pdb_id, feature)
 
 
 # %%
-
-# %%
-analyzer.visualize_in_client(61510, 0, 100)
+analyzer.visualize_max_acts(18180, 0, 100)
 
 
 # %%
@@ -247,6 +147,18 @@ trained_sae = trunk_sae
 sae_values, sae_indices = trained_sae.get_latent_acts_and_indices(
     flat_acts, correct_indices=True
 )
+
+# %%
+# Spot checking max acts
+f = 10_000
+t = 10
+
+x, y, pdb_id = analyzer.coords[f, t].int().tolist()
+
+print(analyzer.values[f, t].item())
+
+spot_check(pdb_id, x, y, f, trunk_sae)
+
 
 # %%
 trained_sae(flat_acts).fvu

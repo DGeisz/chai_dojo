@@ -3,8 +3,15 @@ from einops import rearrange, einsum
 import torch
 import os
 import plotly.express as px
+import matplotlib.pyplot as plt
+import numpy as np
+from Bio.PDB.PDBList import PDBList
+from Bio.PDB.PDBParser import PDBParser
 
 from typing import TypedDict
+from rich.table import Table
+from rich import print as rprint
+
 
 from chai_lab.interp.data.data_loader import DataLoader, load_s3_object_with_progress
 from chai_lab.interp.sae.o_sae import OSae
@@ -34,10 +41,67 @@ main_end = 1000
 
 # max_acts_file_name = f"max_acts_N{main_n}_A{main_end - main_start}.pt2"
 
-max_acts_file_name = "max_acts_v1_N500_A1000.pt2"
+max_acts_file_name = "max_acts_v1_fixed_N500_A1000.pt2"
 max_acts_s3_key = f"chai/max_acts/{max_acts_file_name}"
 
 local_max_acts_file_name = get_local_filename(max_acts_file_name)
+
+
+def download_pdb(pdb_id, save_dir="pdb_files"):
+    pdbl = PDBList()
+    pdbl.retrieve_pdb_file(pdb_id, pdir=save_dir, file_format="pdb")
+    return f"{save_dir}/pdb{pdb_id.lower()}.ent"
+
+
+def get_alpha_carbons(structure):
+    ca_atoms = []
+    for model in structure:
+        for chain in model:
+            for residue in chain:
+                if "CA" in residue:  # CA is the alpha carbon atom
+                    ca_atoms.append(residue["CA"].coord)
+    return np.array(ca_atoms)
+
+
+def compute_distance_matrix(coords):
+    num_atoms = coords.shape[0]
+    distance_matrix = np.zeros((num_atoms, num_atoms))
+    for i in range(num_atoms):
+        for j in range(i, num_atoms):
+            distance = np.linalg.norm(coords[i] - coords[j])
+            distance_matrix[i, j] = distance
+            distance_matrix[j, i] = distance
+    return distance_matrix
+
+
+def plot_distance_matrix(distance_matrix):
+    plt.imshow(distance_matrix, cmap="viridis")
+    plt.colorbar(label="Distance (Å)")
+    plt.title("Amino Acid Distance Matrix")
+    plt.xlabel("Residue Index")
+    plt.ylabel("Residue Index")
+    plt.show()
+
+
+# Main function to generate the distance matrix plot
+def plot_pdb_distance_matrix(pdb_id):
+    pdb_file = download_pdb(pdb_id)
+    parser = PDBParser(QUIET=True)
+
+    structure = parser.get_structure(pdb_id, pdb_file)
+    ca_coords = get_alpha_carbons(structure)
+    distance_matrix = compute_distance_matrix(ca_coords)
+
+    return distance_matrix
+
+
+def imshow_np(array, **kwargs):
+    px.imshow(
+        array,
+        color_continuous_midpoint=0.0,
+        color_continuous_scale="RdBu",
+        **kwargs,
+    ).show()
 
 
 def imshow(tensor, **kwargs):
@@ -145,6 +209,32 @@ class MaxActsAnalyzer:
 
         return self.max_acts_indices_cache[pdb_id]
 
+    def chain_labels(self, fasta: FastaPDB):
+        return [
+            f"{a}:{i + 1}"
+            for i, a in enumerate(
+                list("".join([chain.sequence.strip() for chain in fasta.chains]))
+            )
+        ]
+
+    def plot_pairwise_distance(self, pdb_id: int | str, inverted=True):
+        pdb_id = self._clean_pdb_id(pdb_id)
+        fasta = SHORT_PROTEINS_DICT[pdb_id]
+
+        d_mat = plot_pdb_distance_matrix(pdb_id)
+
+        if inverted:
+            d_mat = d_mat.max() - d_mat
+
+        labels = self.chain_labels(fasta)
+
+        imshow_np(
+            d_mat,
+            x=labels,
+            y=labels,
+            title=f"Pairwise Distance Matrix for {pdb_id}",
+        )
+
     def plot_feature_inclusion(
         self, pdb_id: int | str, feature_id: int, extra_title=""
     ):
@@ -158,17 +248,13 @@ class MaxActsAnalyzer:
             "(i k) -> i k",
             i=fasta.combined_length,
         )
-        all_prot = [
-            f"{a}:{i + 1}"
-            for i, a in enumerate(
-                list("".join([chain.sequence.strip() for chain in fasta.chains]))
-            )
-        ]
+
+        labels = self.chain_labels(fasta)
 
         imshow(
             mat,
-            x=all_prot,
-            y=all_prot,
+            x=labels,
+            y=labels,
             title=f"Feature #{feature_id} Inclusion in {pdb_id}",
         )
 
@@ -184,12 +270,7 @@ class MaxActsAnalyzer:
 
         mat_vals = rearrange(vals, "(n m) -> n m", n=fasta.combined_length)
 
-        all_prot = [
-            f"{a}:{i + 1}"
-            for i, a in enumerate(
-                list("".join([chain.sequence.strip() for chain in fasta.chains]))
-            )
-        ]
+        all_prot = self.chain_labels(fasta)
 
         imshow(
             mat_vals.float(),
@@ -225,6 +306,8 @@ class MaxActsAnalyzer:
         i: int,
         plot_inclusion=True,
         plot_values=True,
+        plot_pairwise_distance=True,
+        inverted=True,
     ):
         pdb_id = self._clean_pdb_id(pdb_id)
 
@@ -246,11 +329,50 @@ class MaxActsAnalyzer:
 
         print(f"Top feature {i} at {x}:{y} in {pdb_id}: {top_i_ind} with {top_i_val}")
 
+        if plot_pairwise_distance:
+            self.plot_pairwise_distance(pdb_id, inverted)
+
         if plot_inclusion:
             self.plot_feature_inclusion(pdb_id, top_i_ind)
 
         if plot_values:
             self.plot_feature_vals(pdb_id, top_i_ind)
+
+    def visualize_max_acts(self, feature_id: int, start: int, end: int):
+        max_act_entries = self.get_index(feature_id)[start:end]
+
+        table = Table(
+            show_header=True,
+            header_style="bold yellow",
+            show_lines=True,
+            title=f"Feature #{feature_id} Max Acts",
+        )
+
+        table.add_column("Rank")
+        table.add_column("PDB ID")
+        table.add_column("Activation")
+        table.add_column("X")
+        table.add_column("Y")
+        table.add_column("X Residue")
+        table.add_column("Y Residue")
+
+        for i, (value, coord) in enumerate(max_act_entries):
+            rank = i + start
+
+            x, y, pdb_index = coord
+            pdb_id = int_to_pdbid(pdb_index)
+
+            fasta = SHORT_PROTEINS_DICT[pdb_id]
+
+            x_vis = token_index_to_residue(fasta, x)
+            y_vis = token_index_to_residue(fasta, y)
+
+            x_res = fasta.chains[x_vis.chain].sequence[x_vis.seq_index]
+            y_res = fasta.chains[y_vis.chain].sequence[y_vis.seq_index]
+
+            table.add_row(str(rank), pdb_id, str(value), str(x), str(y), x_res, y_res)
+
+        rprint(table)
 
     def visualize_in_client(self, feature_id: int, start: int, end: int):
         max_act_entries = self.get_index(feature_id)[start:end]
