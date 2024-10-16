@@ -77,3 +77,5 @@ analyzer.plot_max_acts_table(18180, 0, 20)
 # %%
 # Also tracks locations that don't involve proline
 analyzer.plot_max_acts_table(18180, 90, 100)
+
+

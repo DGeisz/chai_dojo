@@ -197,3 +197,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# pdbfiles
+pdb_files/
