@@ -5,14 +5,14 @@
 # %%
 import torch
 
-from chai_lab.interp.max_acts.max_acts_analyzer import MaxActsAnalyzer
+from chai_lab.interp.max_acts.feature_analyzer import FeatureAnalyzer
 
 ngrok_url = "https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app"
 
 torch.set_grad_enabled(False)
 
 # %%
-analyzer = MaxActsAnalyzer(ngrok_url)
+analyzer = FeatureAnalyzer(ngrok_url)
 
 # %%
 pdb_id = "1bbc"

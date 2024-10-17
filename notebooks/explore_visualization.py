@@ -15,7 +15,7 @@ from einops import rearrange, einsum
 
 from chai_lab.interp.data.data_loader import DataLoader
 from chai_lab.interp.max_acts.max_acts_aggregation import spot_check
-from chai_lab.interp.max_acts.max_acts_analyzer import load_max_acts_from_s3, MaxActsAnalyzer
+from chai_lab.interp.max_acts.feature_analyzer import load_max_acts_from_s3, FeatureAnalyzer
 from chai_lab.interp.data.pdb_utils import pdbid_to_int, int_to_pdbid
 from chai_lab.interp.storage.s3_utils import pair_s3_key, pair_v1_s3_key
 from chai_lab.interp.visualizer.server.visualizer_controller import ProteinToVisualize, VisualizationCommand, VisualizerController
@@ -29,7 +29,7 @@ ngrok_url = "https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app"
 torch.set_grad_enabled(False)
 
 # %%
-analyzer = MaxActsAnalyzer(ngrok_url)
+analyzer = FeatureAnalyzer(ngrok_url)
 
 # %%
 analyzer.plot_max_acts_table(47049, 0, 40)
@@ -488,7 +488,7 @@ imshow(n_acts.float())
 spot_check("1brp", 25, 122, 1, data_loader=data_loader)
 
 # %%
-max_acts = MaxActsAnalyzer('https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app')
+max_acts = FeatureAnalyzer('https://ec18-2601-643-867e-39a0-d14a-9df3-80d8-7273.ngrok-free.app')
 
 # %%
 

@@ -144,8 +144,8 @@ def token_index_to_residue(fasta: FastaPDB, token_index: int) -> ResidueVis:
     raise ValueError("Token index out of range")
 
 
-class MaxActsAnalyzer:
-    def __init__(self, ngrok_url: str, osae: OSae = trunk_sae):
+class FeatureAnalyzer:
+    def __init__(self, ngrok_url: str = "", osae: OSae = trunk_sae):
         self.max_acts_dict = load_max_acts_from_s3()
 
         self.values = self.max_acts_dict["values"]
@@ -235,6 +235,12 @@ class MaxActsAnalyzer:
 
         return self.max_acts_indices_cache[pdb_id]
 
+    def chain_labels_for_pdb_id(self, pdb_id: int | str):
+        pdb_id = self._clean_pdb_id(pdb_id)
+        fasta = SHORT_PROTEINS_DICT[pdb_id]
+
+        return self.chain_labels(fasta)
+
     def chain_labels(self, fasta: FastaPDB):
         return [
             f"{a}:{i + 1}"
@@ -262,9 +268,7 @@ class MaxActsAnalyzer:
             + (" (Inverted)" if inverted else ""),
         )
 
-    def plot_feature_inclusion(
-        self, pdb_id: int | str, feature_id: int, extra_title=""
-    ):
+    def feature_inclusion_matrix(self, pdb_id: int | str, feature_id: int):
         pdb_id = self._clean_pdb_id(pdb_id)
         fasta = SHORT_PROTEINS_DICT[pdb_id]
 
@@ -276,16 +280,9 @@ class MaxActsAnalyzer:
             i=fasta.combined_length,
         )
 
-        labels = self.chain_labels(fasta)
+        return mat
 
-        imshow(
-            mat,
-            x=labels,
-            y=labels,
-            title=f"Feature #{feature_id} Inclusion in {pdb_id}",
-        )
-
-    def plot_feature_vals(self, pdb_id: int | str, feature_id: int):
+    def feature_vals_matrix(self, pdb_id: int | str, feature_id: int):
         pdb_id = self._clean_pdb_id(pdb_id)
         fasta = SHORT_PROTEINS_DICT[pdb_id]
 
@@ -297,12 +294,29 @@ class MaxActsAnalyzer:
 
         mat_vals = rearrange(vals, "(n m) -> n m", n=fasta.combined_length)
 
-        all_prot = self.chain_labels(fasta)
+        return mat_vals
+
+    def plot_feature_inclusion(
+        self, pdb_id: int | str, feature_id: int, extra_title=""
+    ):
+        mat = self.feature_inclusion_matrix(pdb_id, feature_id)
+        labels = self.chain_labels_for_pdb_id(pdb_id)
+
+        imshow(
+            mat,
+            x=labels,
+            y=labels,
+            title=f"Feature #{feature_id} Inclusion in {pdb_id}",
+        )
+
+    def plot_feature_vals(self, pdb_id: int | str, feature_id: int):
+        mat_vals = self.feature_vals_matrix(pdb_id, feature_id)
+        labels = self.chain_labels_for_pdb_id(pdb_id)
 
         imshow(
             mat_vals.float(),
-            x=all_prot,
-            y=all_prot,
+            x=labels,
+            y=labels,
             title=f"Feature #{feature_id} Values in {pdb_id}",
         )
 
@@ -405,6 +419,9 @@ class MaxActsAnalyzer:
         rprint(table)
 
     def visualize_in_client(self, feature_id: int, start: int, end: int):
+        if not self.visualizer_controller.ngrok_url:
+            raise ValueError("No ngrok URL provided")
+
         max_act_entries = self.get_index(feature_id)[start:end]
 
         visualizer_entries = []
