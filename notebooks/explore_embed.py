@@ -42,7 +42,10 @@ device = torch.device("cuda:0")
 
 model_size = 256
 
-feature_embedding = load_exported(f"{model_size}/feature_embedding.pt2", device)
+
+# feature_embedding = load_exported(f"{model_size}/feature_embedding.pt2", device)
+# %%
+dist = load_exported(f"{model_size}/distogram.pt2", device)
 # token_input_embedder = load_exported(f"{model_size}/token_input_embedder.pt2", device)
 # trunk = load_exported(f"{model_size}/trunk.pt2", device)
 
