@@ -18,10 +18,8 @@ torch.set_grad_enabled(False)
 
 
 # %%
+
 esm_tokenizer._id_to_token
-
-
-
 
 
 # %%
