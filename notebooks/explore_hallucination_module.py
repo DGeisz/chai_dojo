@@ -1,4 +1,6 @@
 # %%
+
+from functools import cache
 import torch
 import boto3
 import yaml
@@ -21,7 +23,7 @@ from chai_lab.data.parsing.structure.entity_type import EntityType
 from chai_lab.data.sources.rdkit import RefConformerGenerator
 from chai_lab.interp.data.context_builder import fasta_to_feature_context, gen_tokenizer
 from chai_lab.interp.storage.s3 import s3_client
-from chai_lab.interp.data.pdb_etl import get_pdb_fastas
+from chai_lab.interp.data.pdb_etl import FastaChain, get_pdb_fastas
 from chai_lab.utils.memory import get_gpu_memory, model_size_in_bytes
 from dataclasses import dataclass, fields, is_dataclass
 from chai_lab.data.residue_constants import residue_types_with_nucleotides_order
@@ -53,7 +55,8 @@ collator = Collate(
 )
 
 device = torch.device("cuda:0")
-model_size = 256
+# model_size = 256
+model_size = 1024
 
 tokenizer = gen_tokenizer()
 feature_embedding = load_exported(f"{model_size}/feature_embedding.pt2", device)
@@ -66,10 +69,34 @@ pdb_id = fasta.pdb_id
 run_id = f"{pdb_id}"
 
 
+# %%
+seq = "LEEKKVCQGTSNKLTQLGTFEDHFLSLQRMFNNCEVVLGNLEITYVQRNYDLSFLKTIQEVAGYVLIALNTVERIPLENLQIIRGNMYYENSYALAVLSNYDANKTGLKELPMRNLQEILHGAVRFSNNPALCNVESIQWRDIVSSDFLSNMSMDFQNHLGSCQKCDPSCPNGSCWGAGEENCQKLTKIICAQQCSGRCRGKSPSDCCHNQCAAGCTGPRESDCLVCRKFRDEATCKDTCPPLMLYNPTTYQMDVNPEGKYSFGATCVKKCPRNYVVTDHGSCVRACGADSYEMEEDGVRKCKKCEGPCRKVCNGIGIGEFKDSLSINATNIKHFKNCTSISGDLHILPVAFRGDSFTHTPPLDPQELDILKTVKEITGFLLIQAWPENRTDLHAFENLEIIRGRTKQHGQFSLAVVSLNITSLGLRSLKEISDGDVIISGNKNLCYANTINWKKLFGTSGQKTKIISNRGENSCKATGQVCHALCSPEGCWGPEPRDCVSCRNVSRGRECVDKCNLLEGEPREFVENSECIQCHPECLPQAMNITCTGRGPDNCIQCAHYIDGPHCVKTCPAGVMGENNTLVWKYADAGHVCHLCHPNCTYGCTGPGLEGCPTNGPKIPS"
+len(seq)
+
+# %%
+fasta.chains.append(FastaChain(
+    fasta_type="protein",
+    sequence=seq,
+    length=len(seq.strip()),
+    extra_header=''
+))
+
+# %%
 fasta_path = Path(
     f"/tmp/{''.join(random.choices(string.ascii_lowercase, k=4))}.fasta"
 )
 fasta_path.write_text(fasta.chai_fasta)
+
+# # %%
+# fasta.combined_length
+
+
+
+# # %%
+# seq = """
+# LEEKKVCQGTSNKLTQLGTFEDHFLSLQRMFNNCEVVLGNLEITYVQRNYDLSFLKTIQEVAGYVLIALNTVERIPLENLQIIRGNMYYENSYALAVLSNYDANKTGLKELPMRNLQEILHGAVRFSNNPALCNVESIQWRDIVSSDFLSNMSMDFQNHLGSCQKCDPSCPNGSCWGAGEENCQKLTKIICAQQCSGRCRGKSPSDCCHNQCAAGCTGPRESDCLVCRKFRDEATCKDTCPPLMLYNPTTYQMDVNPEGKYSFGATCVKKCPRNYVVTDHGSCVRACGADSYEMEEDGVRKCKKCEGPCRKVCNGIGIGEFKDSLSINATNIKHFKNCTSISGDLHILPVAFRGDSFTHTPPLDPQELDILKTVKEITGFLLIQAWPENRTDLHAFENLEIIRGRTKQHGQFSLAVVSLNITSLGLRSLKEISDGDVIISGNKNLCYANTINWKKLFGTSGQKTKIISNRGENSCKATGQVCHALCSPEGCWGPEPRDCVSCRNVSRGRECVDKCNLLEGEPREFVENSECIQCHPECLPQAMNITCTGRGPDNCIQCAHYIDGPHCVKTCPAGVMGENNTLVWKYADAGHVCHLCHPNCTYGCTGPGLEGCPTNGPKIPS
+# """
+
 
 # %%
 %%time
@@ -91,22 +118,19 @@ chains[0]
 embedding_context = get_esm_embedding_context(chains, device=device)
 
 # %%
-
+%%time
 
 f_context = fasta_to_feature_context(fasta, tokenizer=tokenizer, device=device)
 
 feature_contexts = [f_context]
 
-
-
 batch_size = 1
 batch = collator(feature_contexts=feature_contexts)
 batch = move_data_to_device(batch, device=device)
 
-
 pad_sizes = get_pad_sizes([p.structure_context for p in feature_contexts])
 
-chains = load_chains_from_raw(fasta, tokenizer=tokenizer)
+# chains = load_chains_from_raw(fasta, tokenizer=tokenizer)
 # contexts = [c.structure_context for c in chains]
 # merged_context = AllAtomStructureContext.merge(contexts)
 # n_actual_tokens = merged_context.num_tokens
@@ -126,13 +150,15 @@ chains = load_chains_from_raw(fasta, tokenizer=tokenizer)
 #     n_templates=MAX_NUM_TEMPLATES,
 # )
 
-embedding_context = get_esm_embedding_context(chains, device=device)
+# embedding_context = get_esm_embedding_context(chains, device=device)
 
 
 
 # %%
 features = {name: feature for name, feature in batch["features"].items()}
 list(features.keys())
+
+
 
 # %%
 inputs = batch["inputs"]
@@ -258,6 +284,8 @@ class RelaxedOneHotModule(nn.Module):
                     feature_name
                 ]
                 num += embedder.forward(self.features[feature_name]).shape[-1]
+
+            return num
 
         assert self._residue_type_start_index is not None
 

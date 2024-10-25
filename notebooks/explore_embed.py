@@ -39,7 +39,6 @@ collator = Collate(
 tokenizer = gen_tokenizer()
 
 device = torch.device("cuda:0")
-
 model_size = 256
 
 
@@ -76,22 +75,17 @@ print(inspect.getsource(feature_embedding.forward))
 forward(feature_embedding, **features)
 
 # %%
-(features['TokenPLDDT'].flatten() == 3).all().item()
+(features["TokenPLDDT"].flatten() == 3).all().item()
 
 # %%
-px.line(features['ESMEmbeddings'][0, 0].detach().cpu().numpy())
+px.line(features["ESMEmbeddings"][0, 0].detach().cpu().numpy())
 
 # %%
-features['RelativeTokenSeparation'][0, 5, :].flatten()
-
-
-
+features["RelativeTokenSeparation"][0, 5, :].flatten()
 
 
 # %%
 # feature_embedding.ff =
-
-
 
 
 # %%
@@ -284,7 +278,6 @@ block_atom_pair_mask = inputs["block_atom_pair_mask"]
 
 embedded_features
 # %%
-
 
 
 embedded_features = feature_embedding.forward(**features)
